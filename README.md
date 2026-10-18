@@ -134,7 +134,7 @@ Rules that keep us from blocking each other:
 
 ### Environment variables (used when an app runs on its own, next phase)
 
-| Variable | Used by | Default | Next phase |
+| Variable | Used by | Mock | Real data |
 |---|---|---|---|
 | `DATABROKER` | vehicle apps | `fake` | `kuksa` |
 | `DATABROKER_HOST`, `DATABROKER_PORT` | vehicle apps | `127.0.0.1`, `55555` | Databroker of that van |

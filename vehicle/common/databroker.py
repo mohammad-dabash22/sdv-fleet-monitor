@@ -1,10 +1,9 @@
-"""Connect to the vehicle's Databroker (fake today, Kuksa next phase).
+"""Connect to the vehicle's Databroker: the fake one, or a real Kuksa Databroker.
 
 This is the ONLY vehicle file that knows whether the Databroker is fake.
 
-NEXT PHASE:
-    pip install kuksa-client      (pin the version that works with Velocitas)
-    set DATABROKER=kuksa, DATABROKER_HOST, DATABROKER_PORT
+Real Kuksa: start deploy/kuksa/docker-compose.yml, then set DATABROKER=kuksa
+(and DATABROKER_HOST, DATABROKER_PORT), or run `run_demo.py --databroker kuksa`.
 """
 
 from __future__ import annotations

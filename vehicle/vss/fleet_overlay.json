@@ -1,0 +1,59 @@
+{
+  "Vehicle": {
+    "type": "branch",
+    "description": "High-level vehicle data.",
+    "children": {
+      "Fleet": {
+        "type": "branch",
+        "description": "Fleet operation data for this vehicle.",
+        "children": {
+          "VehicleId": {
+            "type": "attribute",
+            "datatype": "string",
+            "description": "Fleet identifier of the vehicle, for example veh-02."
+          },
+          "RouteId": {
+            "type": "sensor",
+            "datatype": "string",
+            "description": "Route the vehicle is driving, for example B."
+          },
+          "TripId": {
+            "type": "sensor",
+            "datatype": "uint32",
+            "description": "Counter that goes up by one each time the vehicle starts a new trip."
+          }
+        }
+      },
+      "Hazard": {
+        "type": "branch",
+        "description": "The most severe hazard detected on the vehicle right now.",
+        "children": {
+          "Type": {
+            "type": "sensor",
+            "datatype": "string",
+            "allowed": ["NONE", "HARSH_BRAKING", "TRACTION_LOSS", "OVERSPEED", "LOW_ENERGY", "OVERHEAT"],
+            "description": "Type of the current hazard."
+          },
+          "Severity": {
+            "type": "sensor",
+            "datatype": "uint8",
+            "min": 0,
+            "max": 3,
+            "description": "0 none, 1 warning, 2 high, 3 critical."
+          },
+          "Detail": {
+            "type": "sensor",
+            "datatype": "string",
+            "description": "Human-readable detail of the current hazard."
+          },
+          "DetectedAt": {
+            "type": "sensor",
+            "datatype": "uint64",
+            "unit": "ms",
+            "description": "Time the hazard was detected (t0), Unix time in milliseconds."
+          }
+        }
+      }
+    }
+  }
+}

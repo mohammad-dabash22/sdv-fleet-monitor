@@ -1,9 +1,8 @@
 # Fleet and hazard overlay for the SDV Fleet Operations & Hazard Monitor.
 #
-# Today the fake Databroker accepts any path, so this file is not loaded yet.
-# NEXT PHASE: start the Kuksa Databroker with this overlay, for example
-#   --vss vss_release_4.0.json,fleet_overlay.json
-# (convert this .vspec to JSON with vss-tools first).
+# The Kuksa Databroker loads the JSON version of this file, fleet_overlay.json
+# (see deploy/kuksa/docker-compose.yml). Keep the two in sync;
+# vehicle/tests/test_vss_overlay.py checks the JSON against the code.
 
 Vehicle.Fleet:
   type: branch

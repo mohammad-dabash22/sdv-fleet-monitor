@@ -1,0 +1,34 @@
+# One Kuksa Databroker per van (the in-vehicle digital twin), for local development.
+#
+#   docker compose -f deploy/kuksa/docker-compose.yml up -d
+#   python run_demo.py --databroker kuksa
+#   docker compose -f deploy/kuksa/docker-compose.yml down
+#
+# Each broker loads the standard VSS 5.1 catalogue that ships in the image plus our
+# overlay (Vehicle.Fleet.*, Vehicle.Hazard.*), so unknown paths are rejected.
+# --enable-databroker-v1 also serves the older sdv.databroker.v1 API that the
+# Velocitas SDK uses; kuksa-client uses kuksa.val.v2, which is always on.
+#
+# NEXT PHASE: Ankaios starts these brokers (deploy/ankaios/state.yaml) instead.
+
+x-databroker: &databroker
+  image: ghcr.io/eclipse-kuksa/kuksa-databroker:0.6.0
+  command: ["--insecure", "--enable-databroker-v1", "--vss", "vss_release_5.1.json,/fleet_overlay.json"]
+  volumes:
+    - ../../vehicle/vss/fleet_overlay.json:/fleet_overlay.json:ro
+
+services:
+  databroker-veh-01:
+    <<: *databroker
+    container_name: databroker-veh-01
+    ports: ["55555:55555"]
+
+  databroker-veh-02:
+    <<: *databroker
+    container_name: databroker-veh-02
+    ports: ["55556:55555"]
+
+  databroker-veh-03:
+    <<: *databroker
+    container_name: databroker-veh-03
+    ports: ["55557:55555"]

@@ -45,6 +45,9 @@ label { color: var(--muted); font-size: 12px; }
   display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px;
   background: rgba(255,255,255,.08); font-size: 13px; white-space: nowrap;
 }
+/* A class that sets display beats the browser's own [hidden] rule, so hidden
+   elements such as the "Mock data" badge would stay on screen for ever. */
+[hidden] { display: none !important; }
 .pill-mock { background: #f5c242; color: #2a2000; font-weight: 600; }
 .pill-alert b { color: #ff9b8f; }
 .conn i { width: 8px; height: 8px; border-radius: 50%; background: #9aa5b1; }

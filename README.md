@@ -1,6 +1,5 @@
 # SDV Fleet Operations & Hazard Monitor
 
-Group 5: Ahmad Musleh, Giancarlo Sotelo Lajo, Mohammad Dabash
 
 A cloud system that monitors a fleet of 3 simulated electric vans. Hazards
 (harsh braking, traction loss, ...) are detected on each van, sent to the

@@ -1,0 +1,12 @@
+{
+  "routes": {
+    "A": { "name": "Route A - North (Taunton Rd)", "speed_limit_kmh": 60 },
+    "B": { "name": "Route B - Downtown (King St)", "speed_limit_kmh": 50 },
+    "C": { "name": "Route C - East (Harmony Rd)", "speed_limit_kmh": 70 }
+  },
+  "vehicles": [
+    { "vehicle_id": "veh-01", "name": "Van 01", "route_id": "A", "powertrain": "BEV", "databroker_port": 55555 },
+    { "vehicle_id": "veh-02", "name": "Van 02", "route_id": "B", "powertrain": "BEV", "databroker_port": 55556 },
+    { "vehicle_id": "veh-03", "name": "Van 03", "route_id": "C", "powertrain": "BEV", "databroker_port": 55557 }
+  ]
+}

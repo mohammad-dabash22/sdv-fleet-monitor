@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDV Fleet Monitor</title>
+  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <div>
+        <h1>SDV Fleet Monitor</h1>
+        <p>Fleet Operations &amp; Hazard Monitor</p>
+      </div>
+    </div>
+    <div class="pills">
+      <span id="mock-badge" class="pill pill-mock" hidden>Mock data</span>
+      <span class="pill"><b id="online-count">0/0</b> online</span>
+      <span class="pill pill-alert"><b id="active-count">0</b> active alerts</span>
+      <span class="pill conn" id="conn"><i></i><span>Connecting</span></span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card map-card">
+      <div id="map" role="img" aria-label="Live map of the fleet"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <h2>Fleet</h2>
+        <div id="fleet" class="fleet"></div>
+      </section>
+
+      <section class="card alerts-card">
+        <div class="card-head">
+          <h2>Alerts</h2>
+          <label class="toggle"><input type="checkbox" id="show-resolved"> Show resolved</label>
+        </div>
+        <ul id="alerts" class="alerts"></ul>
+      </section>
+    </aside>
+
+    <section class="card latency-card">
+      <div class="card-head">
+        <h2>Hazard latency <span class="muted">(vehicle to cloud)</span></h2>
+        <span id="latency-verdict" class="verdict">No data yet</span>
+      </div>
+      <div class="kpis">
+        <div><label>Hazards measured</label><b id="lat-count">0</b></div>
+        <div><label>Median</label><b id="lat-median">-</b></div>
+        <div><label>95th percentile</label><b id="lat-p95">-</b></div>
+        <div><label>Max</label><b id="lat-max">-</b></div>
+      </div>
+      <p class="note" id="latency-note">Target: 95% of hazards arrive in under 2 seconds.</p>
+    </section>
+
+    <section class="card routes-card">
+      <h2>Route performance <span class="muted">(completed trips)</span></h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Route</th><th>Trips</th><th>Distance</th><th>Hazards / 100 km</th><th>Avg battery / trip</th><th>Hazard alerts</th></tr>
+          </thead>
+          <tbody id="routes"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="/static/vendor/leaflet/leaflet.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

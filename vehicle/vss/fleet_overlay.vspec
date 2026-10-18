@@ -1,0 +1,53 @@
+# Fleet and hazard overlay for the SDV Fleet Operations & Hazard Monitor.
+#
+# Today the fake Databroker accepts any path, so this file is not loaded yet.
+# NEXT PHASE: start the Kuksa Databroker with this overlay, for example
+#   --vss vss_release_4.0.json,fleet_overlay.json
+# (convert this .vspec to JSON with vss-tools first).
+
+Vehicle.Fleet:
+  type: branch
+  description: Fleet operation data for this vehicle.
+
+Vehicle.Fleet.VehicleId:
+  datatype: string
+  type: attribute
+  description: Fleet identifier of the vehicle, for example veh-02.
+
+Vehicle.Fleet.RouteId:
+  datatype: string
+  type: sensor
+  description: Route the vehicle is driving, for example B.
+
+Vehicle.Fleet.TripId:
+  datatype: uint32
+  type: sensor
+  description: Counter that goes up by one each time the vehicle starts a new trip.
+
+Vehicle.Hazard:
+  type: branch
+  description: The most severe hazard detected on the vehicle right now.
+
+Vehicle.Hazard.Type:
+  datatype: string
+  type: sensor
+  allowed: ['NONE', 'HARSH_BRAKING', 'TRACTION_LOSS', 'OVERSPEED', 'LOW_ENERGY', 'OVERHEAT']
+  description: Type of the current hazard.
+
+Vehicle.Hazard.Severity:
+  datatype: uint8
+  type: sensor
+  min: 0
+  max: 3
+  description: 0 none, 1 warning, 2 high, 3 critical.
+
+Vehicle.Hazard.Detail:
+  datatype: string
+  type: sensor
+  description: Human-readable detail of the current hazard.
+
+Vehicle.Hazard.DetectedAt:
+  datatype: uint64
+  type: sensor
+  unit: ms
+  description: Time the hazard was detected (t0), Unix time in milliseconds.

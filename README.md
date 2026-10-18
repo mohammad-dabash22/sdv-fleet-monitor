@@ -54,6 +54,20 @@ Stop with **Ctrl+C**.
 
 With `run_demo.bat` you can pass the same options: `run_demo.bat --inject 50`.
 
+### Start the demo (macOS / Linux)
+
+**Easy way:** run **`./run_demo.sh`** — it finds a Python 3.11+ interpreter, creates `.venv`
+and starts everything. The same options work: `./run_demo.sh --inject 50`.
+
+**Manual way:** macOS ships Python 3.9, which `run_demo.py` rejects, so name a newer one
+explicitly (install with `brew install python@3.13` if you do not have it):
+
+```bash
+python3.13 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python run_demo.py
+```
+
 ### What you will see
 
 - **Map:** the 3 vans (01, 02, 03) moving on Routes A, B and C in Oshawa, and a dot
@@ -117,7 +131,7 @@ tools/inject_hazards.py      injects hazards for the latency test
 tests/test_end_to_end.py     integration test
 deploy/                      empty for now (Ankaios, Zenoh router, Docker next phase)
 .github/workflows/ci.yml     CI: run the tests                          (owner: Giancarlo)
-run_demo.py / run_demo.bat   start everything in one process (mock demo only)
+run_demo.py / .bat / .sh    start everything in one process (mock demo only)
 ```
 
 Rules that keep us from blocking each other:

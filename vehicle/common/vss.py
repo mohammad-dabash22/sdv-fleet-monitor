@@ -3,8 +3,8 @@
 Standard VSS signals come from COVESA VSS 4.x. The Vehicle.Fleet.* and
 Vehicle.Hazard.* signals are our own overlay (see vehicle/vss/fleet_overlay.vspec).
 
-NEXT PHASE: check every standard path against the VSS version that your
-Kuksa Databroker loads, and start the Databroker with fleet_overlay.vspec.
+Every standard path below exists in VSS 5.1, the catalogue that ships with
+kuksa-databroker 0.6.0. The overlay paths come from vehicle/vss/fleet_overlay.json.
 """
 
 # --- standard VSS ---

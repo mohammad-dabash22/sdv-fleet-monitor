@@ -2,11 +2,12 @@
 
     python run_demo.py                 # 3 vans + cloud + dashboard
     python run_demo.py --inject 50     # also inject 50 hazards for the latency test
+    python run_demo.py --databroker kuksa   # real Kuksa Databrokers (start deploy/kuksa first)
     python run_demo.py --help          # all options
 
-What runs (same parts as the real design, only the two tools are fake):
+What runs (same parts as the real design; fakes unless a flag picks the real tool):
 
-    per van (x3):  simulator  ->  fake Databroker  ->  hazard_detector
+    per van (x3):  simulator  ->  Databroker (fake, or Kuksa)  ->  hazard_detector
                                                   ->  cloud_publisher  ->  fake Zenoh
     cloud:         fake Zenoh  ->  CloudService  ->  SQLite (in memory)  +  WebSocket  ->  dashboard
 
@@ -24,6 +25,7 @@ if sys.version_info < (3, 11):
 
 import argparse
 import json
+import os
 import random
 import threading
 import webbrowser
@@ -57,14 +59,17 @@ def main() -> None:
     parser.add_argument("--net-delay", type=float, default=40.0, help="fake network delay in ms")
     parser.add_argument("--inject", type=int, default=0, metavar="N", help="inject N hazards for the latency test")
     parser.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    parser.add_argument("--databroker", choices=["fake", "kuksa"], default=os.environ.get("DATABROKER", "fake"),
+                        help="fake (default) or kuksa: real Databrokers on the ports in config/fleet.json, "
+                             "started with deploy/kuksa/docker-compose.yml")
     args = parser.parse_args()
 
     import uvicorn
 
     from cloud.app.config import CloudConfig
     from cloud.app.main import create_app
-    from fakes import kuksa as fake_kuksa
     from fakes import zenoh as fake_zenoh
+    from vehicle.common import databroker
     from vehicle.common.config import VehicleConfig
 
     random.seed(args.seed)
@@ -80,7 +85,7 @@ def main() -> None:
             vehicle_id=v["vehicle_id"],
             route_id=v["route_id"],
             speed_limit_kmh=fleet["routes"][v["route_id"]]["speed_limit_kmh"],
-            databroker="fake",
+            databroker=args.databroker,
             databroker_port=v["databroker_port"],
             transport="fake",
             time_scale=args.time_scale,
@@ -95,13 +100,21 @@ def main() -> None:
         def run_injection() -> None:
             if stop.wait(8):  # let the fleet start first
                 return
-            clients = [fake_kuksa.VSSClient(c.databroker_host, c.databroker_port) for c in vehicle_cfgs]
-            inject(clients, fake_kuksa.Datapoint, count=args.inject, interval_s=2.0, stop=stop)
+            clients = [databroker.connect(c) for c in vehicle_cfgs]
+            for c in clients:
+                c.connect()
+            try:
+                inject(clients, databroker.datapoint_class(vehicle_cfgs[0]), count=args.inject,
+                       interval_s=2.0, stop=stop)
+            finally:
+                for c in clients:
+                    c.disconnect()
 
         threading.Thread(target=run_injection, name="inject", daemon=True).start()
 
     url = f"http://127.0.0.1:{args.port}"
     print("\n  SDV Fleet Monitor (MOCK DATA)")
+    print(f"  Databroker: {args.databroker}   Transport: fake   Database: SQLite in memory")
     print(f"  Dashboard: {url}")
     print("  Press Ctrl+C to stop.\n")
     if not args.no_browser:

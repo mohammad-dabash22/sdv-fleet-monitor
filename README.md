@@ -51,8 +51,23 @@ Stop with **Ctrl+C**.
 | `python run_demo.py --time-scale 25` | vans move faster, so trips finish sooner |
 | `python run_demo.py --seed 7` | a different (but repeatable) demo |
 | `python run_demo.py --no-browser` | do not open the browser |
+| `python run_demo.py --databroker kuksa` | use the real Kuksa Databrokers (see below) |
 
 With `run_demo.bat` you can pass the same options: `run_demo.bat --inject 50`.
+
+### Use the real Kuksa Databroker
+
+Needs Docker. One Databroker per van (ports 55555, 55556, 55557), each loaded with
+VSS 5.1 plus our overlay `vehicle/vss/fleet_overlay.json` (`Vehicle.Fleet.*`, `Vehicle.Hazard.*`):
+
+```bash
+docker compose -f deploy/kuksa/docker-compose.yml up -d
+python run_demo.py --databroker kuksa --inject 50
+docker compose -f deploy/kuksa/docker-compose.yml down
+```
+
+The vehicle apps then read and write real VSS signals in Kuksa. Zenoh and the
+database are still fakes until their own branches land.
 
 ### What you will see
 

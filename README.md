@@ -83,6 +83,35 @@ docker compose -f deploy/kuksa/docker-compose.yml down
 The vehicle apps then read and write real VSS signals in Kuksa. Zenoh and the
 database are still fakes until their own branches land.
 
+### Run the vans with Eclipse Ankaios (Linux)
+
+Ankaios starts and supervises each van's software from one manifest,
+`deploy/ankaios/state.yaml`: per van a Kuksa Databroker, the simulator and the
+hazard detector, each in its own container, with one Ankaios agent per van.
+The manifest is generated from `config/fleet.json`, so adding a van is one line there.
+
+Needs podman and Ankaios 1.0 (`ank-server`, `ank-agent`, `ank`):
+
+```bash
+sudo apt install -y podman
+curl -sfL https://github.com/eclipse-ankaios/ankaios/releases/download/v1.0.4/install.sh | bash -s -- -v v1.0.4 -t none
+```
+
+Build the two images, then start the server and one agent per van (separate terminals):
+
+```bash
+podman build -f deploy/docker/databroker.Dockerfile -t localhost/sdv-fleet/databroker:dev .
+podman build -f deploy/docker/vehicle.Dockerfile -t localhost/sdv-fleet/vehicle:dev .
+python -m tools.ankaios_manifest          # only after changing config/fleet.json
+ank-server --insecure --startup-manifest deploy/ankaios/state.yaml
+for v in veh-01 veh-02 veh-03; do ank-agent --insecure --name $v --server-url http://127.0.0.1:25551 & done; wait
+ank -k get workloads                       # 9 workloads, all Running(Ok)
+```
+
+If a container stops, Ankaios starts it again (`restartPolicy: ALWAYS`). The
+cloud_publisher joins the manifest once Zenoh is real: the fake Zenoh only works
+inside one process, so these vans do not reach the dashboard yet.
+
 ### What you will see
 
 - **Map:** the 3 vans (01, 02, 03) moving on Routes A, B and C in Oshawa, and a dot

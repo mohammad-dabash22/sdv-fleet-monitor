@@ -8,11 +8,6 @@
 | `docker/vehicle.Dockerfile` | The vehicle apps (simulator, hazard_detector, cloud_publisher); the command picks the app |
 | `docker/dashboard.Dockerfile` | The dashboard with its mock fleet, deployed to GKE |
 | `k8s/cloud.yaml` | GKE: Zenoh router + cloud service with real data from the vans (public dashboard, internal Zenoh) |
+| `k8s/fleet-db.yaml` | GKE: PostgreSQL for the fleet data (telemetry, alerts, trips) |
 | `ankaios/setup-vm.sh`, `ankaios/*.service` | Set up the vans on a VM: images, manifest with publishers, systemd units |
 | `k8s/`, `jenkins/`, `cicd-db/` | GKE deployment, Jenkins and the deployment log |
-
-Still planned:
-
-| File | What it does |
-|---|---|
-| `cloud/docker-compose.yml` | Cloud VM: Zenoh router + PostgreSQL (mounts `cloud/db/schema.postgres.sql`) + cloud service |

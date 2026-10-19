@@ -57,6 +57,9 @@ def main() -> None:
     parser.add_argument("--net-delay", type=float, default=40.0, help="fake network delay in ms")
     parser.add_argument("--inject", type=int, default=0, metavar="N", help="inject N hazards for the latency test")
     parser.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="address to serve on (use 0.0.0.0 in a container, so the port is "
+                             "reachable from outside it)")
     args = parser.parse_args()
 
     import uvicorn
@@ -100,7 +103,7 @@ def main() -> None:
 
         threading.Thread(target=run_injection, name="inject", daemon=True).start()
 
-    url = f"http://127.0.0.1:{args.port}"
+    url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{args.port}"
     print("\n  SDV Fleet Monitor (MOCK DATA)")
     print(f"  Dashboard: {url}")
     print("  Press Ctrl+C to stop.\n")
@@ -108,7 +111,7 @@ def main() -> None:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
 
     try:
-        uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
+        uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     finally:
         stop.set()
 

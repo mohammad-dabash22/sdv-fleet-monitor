@@ -7,18 +7,14 @@
 # call back on (http://sdv-jenkins:8080 and sdv-jenkins-agent:50000).
 
 controller:
-  installPlugins:
-    - kubernetes:latest             # run each build in its own pod
-    - workflow-job:latest
-    - workflow-aggregator:latest    # the pipeline / Jenkinsfile support
+  # additionalPlugins EXTENDS the chart's own default plugin list.
+  # installPlugins would REPLACE it, which silently drops defaults the chart
+  # depends on - configuration-as-code among them, which is how it creates the
+  # admin user. Jenkins then starts with no errors and no account to log in as.
+  # Everything the pipeline needs beyond the defaults goes here.
+  additionalPlugins:
     - credentials-binding:latest    # the credentials() calls in the Jenkinsfile
-    - git:latest
     - github:latest                 # the push webhook
-    # Required, and easy to lose: this key REPLACES the chart's default plugin
-    # list rather than adding to it, and the chart creates the admin user
-    # through Configuration as Code. Drop this line and Jenkins starts cleanly,
-    # logs nothing wrong, and has no account you can log in with.
-    - configuration-as-code:latest
   resources:
     requests:
       cpu: "500m"

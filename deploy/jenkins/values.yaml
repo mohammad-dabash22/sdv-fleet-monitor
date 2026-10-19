@@ -1,0 +1,44 @@
+# Helm values for the Jenkins that builds and deploys this project.
+#
+#   helm repo add jenkinsci https://charts.jenkins.io && helm repo update
+#   helm install sdv-jenkins -f deploy/jenkins/values.yaml jenkinsci/jenkins --wait
+#
+# The release name matters: it becomes the in-cluster hostname the build agents
+# call back on (http://sdv-jenkins:8080 and sdv-jenkins-agent:50000).
+
+controller:
+  installPlugins:
+    - kubernetes:latest             # run each build in its own pod
+    - workflow-job:latest
+    - workflow-aggregator:latest    # the pipeline / Jenkinsfile support
+    - credentials-binding:latest    # the credentials() calls in the Jenkinsfile
+    - git:latest
+    - github:latest                 # the push webhook
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "2Gi"
+    limits:
+      cpu: "1"
+      memory: "4Gi"
+  # Heap below the container limit, or the JVM grows into the limit and the
+  # kernel kills the pod instead of the JVM collecting garbage.
+  javaOpts: "-Xmx3g"
+  serviceType: LoadBalancer
+
+agent:
+  # Fallback only. The real build pod is declared in the Jenkinsfile, which
+  # sets its own requests per container.
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+persistence:
+  size: 20Gi
+
+serviceAccount:
+  name: sdv-jenkins

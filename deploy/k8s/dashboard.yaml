@@ -1,0 +1,70 @@
+# The dashboard on GKE: one Deployment, and one LoadBalancer Service that is
+# the single public entry point for both the web page and the REST/WebSocket
+# API it is built on (/, /static/*, /api/*, /ws).
+#
+# Jenkins applies this file on every commit (see the Jenkinsfile) and replaces
+# IMAGE_PLACEHOLDER with the image it has just built. To apply it by hand:
+#
+#   sed "s|IMAGE_PLACEHOLDER|$REPO_PATH/sdv-fleet-dashboard:latest|" \
+#       deploy/k8s/dashboard.yaml | kubectl apply -f -
+#   kubectl get service/sdv-dashboard --watch   # until EXTERNAL-IP appears
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdv-dashboard
+  labels:
+    app: sdv-dashboard
+spec:
+  # Exactly 1. Each replica simulates its own fleet in memory, so a second one
+  # would serve a different set of vans depending on which pod you reached.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sdv-dashboard
+  template:
+    metadata:
+      labels:
+        app: sdv-dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: IMAGE_PLACEHOLDER
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          readinessProbe:
+            # No traffic reaches the pod until the fleet is up and the API answers.
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdv-dashboard
+  labels:
+    app: sdv-dashboard
+spec:
+  type: LoadBalancer
+  selector:
+    app: sdv-dashboard
+  ports:
+    - name: http
+      port: 80          # port 80, so the demo URL is just http://<external-ip>
+      targetPort: http

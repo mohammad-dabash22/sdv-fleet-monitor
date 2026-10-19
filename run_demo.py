@@ -62,6 +62,9 @@ def main() -> None:
     parser.add_argument("--databroker", choices=["fake", "kuksa"], default=os.environ.get("DATABROKER", "fake"),
                         help="fake (default) or kuksa: real Databrokers on the ports in config/fleet.json, "
                              "started with deploy/kuksa/docker-compose.yml")
+    parser.add_argument("--host", default="127.0.0.1",
+                        help="address to serve on (use 0.0.0.0 in a container, so the port is "
+                             "reachable from outside it)")
     args = parser.parse_args()
 
     import uvicorn
@@ -112,7 +115,7 @@ def main() -> None:
 
         threading.Thread(target=run_injection, name="inject", daemon=True).start()
 
-    url = f"http://127.0.0.1:{args.port}"
+    url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{args.port}"
     print("\n  SDV Fleet Monitor (MOCK DATA)")
     print(f"  Databroker: {args.databroker}   Transport: fake   Database: SQLite in memory")
     print(f"  Dashboard: {url}")
@@ -121,7 +124,7 @@ def main() -> None:
         threading.Timer(1.5, webbrowser.open, args=(url,)).start()
 
     try:
-        uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
+        uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
     finally:
         stop.set()
 

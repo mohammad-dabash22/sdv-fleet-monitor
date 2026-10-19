@@ -1,0 +1,94 @@
+# PostgreSQL for the CI/CD deployment log, in the cluster.
+#
+# Reachable only from inside the cluster (ClusterIP, no LoadBalancer): the
+# pipeline writes to it with `kubectl exec`, and nothing outside needs it.
+#
+# The dashboard does NOT use this database. It is deliberately separate from
+# the fleet data, so switching the application over to PostgreSQL later is an
+# independent change that cannot break the deployed demo.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sdv-cicd-db
+type: Opaque
+stringData:
+  # Demo credentials. Nothing outside the cluster can reach this database, but
+  # for anything real these belong in Secret Manager, not in git.
+  POSTGRES_DB: sdv_cicd
+  POSTGRES_USER: sdv_cicd
+  POSTGRES_PASSWORD: sdvcicdpassword
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sdv-cicd-db
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdv-cicd-db
+  labels:
+    app: sdv-cicd-db
+spec:
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate: the disk is ReadWriteOnce, so a second pod
+    # could never attach it and a rolling update would sit there for ever.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: sdv-cicd-db
+  template:
+    metadata:
+      labels:
+        app: sdv-cicd-db
+    spec:
+      containers:
+        - name: postgres
+          image: IMAGE_PLACEHOLDER
+          envFrom:
+            - secretRef:
+                name: sdv-cicd-db
+          env:
+            # The mounted disk has a lost+found directory, which the official
+            # image refuses to initialise into. Use a subdirectory of it.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "sdv_cicd", "-d", "sdv_cicd"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sdv-cicd-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdv-cicd-db
+spec:
+  type: ClusterIP
+  selector:
+    app: sdv-cicd-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

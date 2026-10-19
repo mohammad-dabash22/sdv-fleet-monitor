@@ -2,7 +2,9 @@
 fastapi>=0.110
 uvicorn[standard]>=0.29
 
+# Real tools that are already wired in:
+kuksa-client==0.6.0  # Kuksa Databroker client (kuksa.val.v2); re-check the pin when Velocitas is added
+
 # NEXT PHASE (real tools), uncomment when you add them:
-# kuksa-client        # Kuksa Databroker client (pin the version that works with Velocitas)
 # eclipse-zenoh       # vehicle-to-cloud transport
 # psycopg2-binary     # PostgreSQL driver for cloud/app/store.py

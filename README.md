@@ -8,7 +8,7 @@ fraction of a second, together with how safe and efficient each route is.
 Group 5, Software Development Methods and Tools (Fall 2026):
 Ahmad Musleh, Giancarlo Sotelo Lajo, Mohammad Dabash.
 
-| Live (GCP) | |
+| Live on GCP | Link |
 |---|---|
 | Dashboard with the real vans | http://136.65.193.93 |
 | Dashboard with the built-in mock fleet | http://34.122.134.52 |
@@ -18,9 +18,9 @@ Ahmad Musleh, Giancarlo Sotelo Lajo, Mohammad Dabash.
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph VM["GCP VM sdv-vehicles: one Ankaios agent per van"]
-        direction TB
+        direction LR
         SIM["Simulator<br/>speed, position, battery"] -->|VSS signals| KUKSA[("Kuksa Databroker<br/>digital twin")]
         KUKSA -->|subscribe| DET["Hazard detector"]
         DET -->|"Vehicle.Hazard.* (t0)"| KUKSA
@@ -28,7 +28,7 @@ flowchart LR
     end
 
     subgraph GKE["Google Kubernetes Engine: the cloud"]
-        direction TB
+        direction LR
         ZR["Zenoh router"] --> CLOUD["Cloud service<br/>ingest, analytics, API (t1)"]
         CLOUD --> PG[("PostgreSQL")]
         CLOUD --> DASH["Dashboard<br/>map, alerts, latency, routes"]

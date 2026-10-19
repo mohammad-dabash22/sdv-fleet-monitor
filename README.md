@@ -1,16 +1,74 @@
 # SDV Fleet Operations & Hazard Monitor
 
+A cloud system that watches a fleet of 3 simulated electric delivery vans in Oshawa.
+Each van detects its own hazards (harsh braking, traction loss, overspeed, ...) and
+sends them to the cloud, where a fleet operator sees them on a live map within a
+fraction of a second, together with how safe and efficient each route is.
 
-A cloud system that monitors a fleet of 3 simulated electric vans. Hazards
-(harsh braking, traction loss, ...) are detected on each van, sent to the
-cloud, stored, and shown live on a web dashboard with a map, an alert queue,
-a latency panel and route performance.
+Group 5, Software Development Methods and Tools (Fall 2026):
+Ahmad Musleh, Giancarlo Sotelo Lajo, Mohammad Dabash.
 
-> **This version uses MOCK DATA.** The code follows the real design (UML),
-> but two external tools are replaced by in-memory fakes:
-> the Kuksa Databroker and Zenoh. SQLite (in memory) stands in for PostgreSQL.
-> Search the code for `NEXT PHASE` to see exactly what changes when the real
-> tools arrive.
+| Live on GCP | Link |
+|---|---|
+| Dashboard with the real vans | http://136.65.193.93 |
+| Dashboard with the built-in mock fleet | http://34.122.134.52 |
+
+---
+
+## How it works
+
+![Architecture: the vans run on a GCP VM under Ankaios, the cloud runs on GKE, connected by Zenoh](docs/architecture.svg)
+
+**One hazard, start to finish:**
+
+1. The **simulator** writes the van's signals (speed, braking, position, battery) into
+   **Kuksa**, the van's digital twin, using standard VSS names like `Vehicle.Speed`.
+2. The **hazard detector** reads those signals from Kuksa. When braking is too hard it
+   writes a hazard back into Kuksa, with the time it saw it (**t0**).
+3. The **cloud publisher** reads the hazard from Kuksa and sends it over **Zenoh**.
+4. In the cloud, the **cloud service** receives it (**t1**), stores it in **PostgreSQL**
+   and pushes it to the **dashboard**. Latency = t1 - t0.
+
+**Who keeps it running:**
+
+| Part | Runs on | Managed by |
+|---|---|---|
+| Kuksa, simulator, hazard detector, cloud publisher (x3 vans) | GCP VM `sdv-vehicles` | **Eclipse Ankaios**: starts them, restarts any that stop |
+| Zenoh router, cloud service, PostgreSQL, dashboards | GKE | **Kubernetes** |
+| New code on `main` | GitHub to GKE | **Jenkins**: test, build, deploy (checks GitHub every 2 minutes) |
+
+## Phase 1 status
+
+| Feature (charter, Phase 1 Must) | Status | How |
+|---|---|---|
+| Simulated fleet | Done | 3 vans on Routes A, B, C (`vehicle/simulator`) |
+| Vehicle digital twin | Done | Kuksa Databroker 0.6.0 per van, VSS 5.1 + our overlay (`vehicle/vss/fleet_overlay.json`) |
+| Hazard detection on the vehicle | Done | `vehicle/hazard_detector`, using the Kuksa Python SDK (see Velocitas below) |
+| Vehicle-to-cloud transport | Done | Eclipse Zenoh 1.10 router on GKE |
+| Vehicle software management | Done | Eclipse Ankaios 1.0.4, one agent per van, generated from `config/fleet.json` |
+| Cloud ingestion and storage | Done | PostgreSQL 16 on GKE (`deploy/k8s/fleet-db.yaml`) |
+| Live dashboard | Done | Map, fleet status, alert queue, latency, route performance |
+| CI/CD | Done | GitHub Actions runs the tests on every PR; Jenkins deploys `main` to GKE |
+| Latency measurement | Done | t0 on the vehicle, t1 in the cloud; results below |
+| Velocitas app | Deferred | Tested and dropped for Phase 1; reason below |
+
+**Latency** (50 injected hazards plus the vans' own, VM in us-central1-a to GKE):
+
+| Hazards | Median | p95 | Max | Target |
+|---|---|---|---|---|
+| 106 | 58 ms | 64 ms | 154 ms | p95 < 2,000 ms: **pass** |
+
+Most of the 58 ms is a 50 ms wait in the publisher, so all of a hazard's signals
+arrive before it is sent. Both machines keep time with Google's NTP servers.
+
+**Why not Velocitas (yet).** We tested velocitas-sdk 0.15.7 against our Kuksa
+Databroker 0.6.0. It reads and subscribes to signals, but it can only write actuator
+targets (our hazard signals are sensors), needs an extra MQTT broker per app, pins old
+gRPC/protobuf versions that conflict with kuksa-client, and its last release was in
+July 2025, which is the risk listed in our charter. It would add parts without adding a
+feature, so the detector uses the Kuksa Python SDK. The hazard rules are separate from
+the Kuksa code (`vehicle/hazard_rules`), so adding Velocitas later only changes the
+detector's input and output.
 
 ---
 
@@ -201,7 +259,7 @@ to an alert in the cloud, in under 2 seconds (FR-19).
 
 ```
 config/fleet.json            vans, routes and speed limits (read by both halves)
-fakes/                       stand-ins for Kuksa and Zenoh (same API as the real libraries)
+fakes/                       stand-ins for Kuksa and Zenoh, for the one-process demo and tests
 vehicle/                     everything that runs on a van              (owner: Ahmad)
   common/                    config, VSS paths, Databroker + Zenoh connection
   hazard_rules/              pure hazard rules (Thresholds, Finding, evaluate)
@@ -216,13 +274,13 @@ cloud/                       everything that runs in the cloud          (owner: 
   app/store.py               Store: all database code
   app/transport.py           Zenoh connection (cloud side)
   app/static/                the dashboard                              (owner: Giancarlo)
-  db/                        SQL schemas (SQLite today, PostgreSQL next phase)
+  db/                        SQL schemas (SQLite for the demo and tests, PostgreSQL in the cloud)
   tests/
 tools/inject_hazards.py      injects hazards for the latency test
 tests/test_end_to_end.py     integration test
-deploy/                      empty for now (Ankaios, Zenoh router, Docker next phase)
+deploy/                      Dockerfiles, Ankaios, Kubernetes, Jenkins (see deploy/README.md)
 .github/workflows/ci.yml     CI: run the tests                          (owner: Giancarlo)
-run_demo.py / .bat / .sh    start everything in one process (mock demo only)
+run_demo.py / .bat / .sh    start everything in one process (demo on a laptop)
 ```
 
 Rules that keep us from blocking each other:
@@ -230,13 +288,13 @@ Rules that keep us from blocking each other:
 - **The vehicle and cloud halves never import each other.** They only share the two
   Zenoh keys (`fleet/{id}/telemetry`, `fleet/{id}/hazards`) and the JSON shape of
   the messages (see `Bridge.snapshot()` and `Bridge.flush_hazard()`).
-- **Only three small files know that the tools are fake:**
+- **Only three small files know whether a tool is real or fake:**
   `vehicle/common/databroker.py`, `vehicle/common/transport.py`, `cloud/app/transport.py`.
   The database choice lives only in `cloud/app/store.py`.
 - **Logic has no I/O:** `hazard_rules` and `analytics.py` are plain functions and
   classes, so they are tested without a broker or a database.
 
-### Environment variables (used when an app runs on its own, next phase)
+### Environment variables (used when an app runs on its own, e.g. under Ankaios)
 
 | Variable | Used by | Mock | Real data |
 |---|---|---|---|

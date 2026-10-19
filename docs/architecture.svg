@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg
+  PUBLIC '-//W3C//DTD SVG 1.0//EN'
+  'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'>
+<svg width="774.4000000000001" height="505.6" preserveAspectRatio="xMinYMin meet" viewBox="0 0 774 505" xmlns="http://www.w3.org/2000/svg" version="1.0" fill-rule="evenodd" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<title>...</title>
+	<desc>...</desc>
+	<clipPath id="clip">
+		<rect x="0" y="0" width="774.4000000000001" height="505.6"/>
+	</clipPath>
+	<g id="group" transform="scale(1,-1) translate(0,-505)" style="clip-path: url(#clip)">
+		<g transform=" matrix(1.6,0,0,1.6,12.8,12.8)">
+			<rect x="-8" y="-8" width="484" height="316" style="stroke: none; stroke-linecap: butt; stroke-width: 1; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<rect x="0" y="52" width="222" height="240" rx="8" ry="8" style="stroke: rgb(18%,35%,65%); stroke-linecap: butt; stroke-width: 1; fill: rgb(95%,96%,98%); fill-rule: evenodd;"/>
+			<text x="10" y="278" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 9.5px;fill: rgb(18%,35%,65%); stroke:none;" transform="translate(0,556) scale(1,-1)">GCP VM  sdv-vehicles</text>
+			<text x="10" y="266" style="font-family: Helvetica, Arial, sans-serif; font-size: 7.6px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,532) scale(1,-1)">Eclipse Ankaios: one agent per van</text>
+			<rect x="246" y="52" width="222" height="240" rx="8" ry="8" style="stroke: rgb(11%,48%,30%); stroke-linecap: butt; stroke-width: 1; fill: rgb(95%,97%,95%); fill-rule: evenodd;"/>
+			<text x="256" y="278" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 9.5px;fill: rgb(11%,48%,30%); stroke:none;" transform="translate(0,556) scale(1,-1)">Google Kubernetes Engine (cloud)</text>
+			<text x="256" y="266" style="font-family: Helvetica, Arial, sans-serif; font-size: 7.6px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,532) scale(1,-1)">Kubernetes keeps every part running</text>
+			<rect x="12" y="216" width="108" height="34" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="46.168400000000005" y="235.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,471) scale(1,-1)">Simulator</text>
+			<text x="29.813499999999998" y="225.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,450) scale(1,-1)">speed, position, battery</text>
+			<rect x="12" y="150" width="108" height="36" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="29.2006" y="170.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,341) scale(1,-1)">Kuksa Databroker</text>
+			<text x="33.5165" y="160.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,320) scale(1,-1)">digital twin (VSS 5.1)</text>
+			<rect x="138" y="150" width="76" height="36" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="158.5592" y="170.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,341) scale(1,-1)">Detector</text>
+			<text x="148.9625" y="160.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,320) scale(1,-1)">finds hazards (t0)</text>
+			<rect x="12" y="86" width="108" height="34" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="33.2684" y="105.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,211) scale(1,-1)">Cloud publisher</text>
+			<text x="35.168499999999995" y="95.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,190) scale(1,-1)">telemetry + hazards</text>
+			<path d="M 66,216 L 66,187 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="66 187, 68.65044 192.9351, 63.34956 192.9351" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<path d="M 120,168 L 137,168 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="137 168, 131.0649 170.6504, 131.0649 165.3496" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<polygon points="120 168, 125.9351 165.3496, 125.9351 170.6504" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<path d="M 66,150 L 66,121 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="66 121, 68.65044 126.9351, 63.34956 126.9351" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<text x="70" y="199" style="font-family: Helvetica, Arial, sans-serif; font-style: italic; font-size: 7.2px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,398) scale(1,-1)">VSS signals</text>
+			<text x="28.13109999999999" y="62" style="font-family: Helvetica, Arial, sans-serif; font-style: italic; font-size: 7.4px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,124) scale(1,-1)">x 3 vans: veh-01 (Route A), veh-02 (B), veh-03 (C)</text>
+			<rect x="262" y="216" width="112" height="34" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="291.4819" y="235.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,471) scale(1,-1)">Zenoh router</text>
+			<text x="285.709" y="225.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,450) scale(1,-1)">internal address only</text>
+			<rect x="262" y="150" width="112" height="36" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="289.80060000000003" y="170.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,341) scale(1,-1)">Cloud service</text>
+			<text x="279.29" y="160.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,320) scale(1,-1)">ingest, analytics, API (t1)</text>
+			<rect x="386" y="150" width="74" height="36" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="398.1503" y="170.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,341) scale(1,-1)">PostgreSQL</text>
+			<text x="408.601" y="160.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,320) scale(1,-1)">fleet data</text>
+			<rect x="262" y="86" width="112" height="34" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="295.54110000000003" y="105.5" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,211) scale(1,-1)">Dashboard</text>
+			<text x="287.655" y="95.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 7px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,190) scale(1,-1)">map, alerts, latency</text>
+			<path d="M 318,216 L 318,187 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="318 187, 320.6504 192.9351, 315.3496 192.9351" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<path d="M 374,168 L 385,168 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="385 168, 379.0649 170.6504, 379.0649 165.3496" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<path d="M 318,150 L 318,121 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="318 121, 320.6504 126.9351, 315.3496 126.9351" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<text x="276.9986" y="62" style="font-family: Helvetica, Arial, sans-serif; font-style: italic; font-size: 7.4px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,124) scale(1,-1)">Fleet operator opens the dashboard in a browser</text>
+			<path d="M 120,103 L 234,103 Z" style="stroke: rgb(18%,35%,65%); stroke-linecap: butt; stroke-width: 1.6;"/>
+			<path d="M 234,103 L 234,233 Z" style="stroke: rgb(18%,35%,65%); stroke-linecap: butt; stroke-width: 1.6;"/>
+			<path d="M 234,233 L 261,233 Z" style="stroke: rgb(18%,35%,65%); stroke-linecap: butt; stroke-width: 1.6;"/>
+			<polygon points="261 233, 255.0649 235.6504, 255.0649 230.3496" style="stroke: rgb(18%,35%,65%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(18%,35%,65%); fill-rule: evenodd;"/>
+			<text x="148.88" y="108" style="font-family: Helvetica, Arial, sans-serif; font-weight: bold; font-size: 8px;fill: rgb(18%,35%,65%); stroke:none;" transform="translate(0,216) scale(1,-1)">Eclipse Zenoh</text>
+			<rect x="60" y="8" width="96" height="26" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="81.2411" y="18.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,36) scale(1,-1)">GitHub (main)</text>
+			<rect x="186" y="8" width="96" height="26" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="219.423" y="18.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,36) scale(1,-1)">Jenkins</text>
+			<rect x="312" y="8" width="96" height="26" rx="4" ry="4" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.9; fill: rgb(100%,100%,100%); fill-rule: evenodd;"/>
+			<text x="330.1236" y="18.0" style="font-family: Helvetica, Arial, sans-serif; font-size: 8.6px;fill: rgb(12%,16%,20%); stroke:none;" transform="translate(0,36) scale(1,-1)">deploys to GKE</text>
+			<path d="M 156,21 L 185,21 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="185 21, 179.0649 23.65044, 179.0649 18.34956" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<path d="M 282,21 L 311,21 Z" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 1.1;"/>
+			<polygon points="311 21, 305.0649 23.65044, 305.0649 18.34956" style="stroke: rgb(12%,16%,20%); stroke-linecap: butt; stroke-width: 0.5; fill: rgb(12%,16%,20%); fill-rule: evenodd;"/>
+			<text x="178.36919999999998" y="38" style="font-family: Helvetica, Arial, sans-serif; font-style: italic; font-size: 7.2px;fill: rgb(32%,37%,42%); stroke:none;" transform="translate(0,76) scale(1,-1)">test, build, deploy on every change</text>
+		</g>
+	</g>
+</svg>

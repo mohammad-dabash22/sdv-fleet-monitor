@@ -1,5 +1,9 @@
-// CI/CD for the SDV Fleet Monitor dashboard: test, build the images, roll the
-// dashboard out on GKE, record the rollout, print the public URL.
+// CI/CD for the SDV Fleet Monitor: test, build the images, roll the mock
+// dashboard and the real cloud (Zenoh router + cloud service + PostgreSQL) out on
+// GKE, record the rollout, print the public URLs.
+//
+// Runs on every new commit on main: GitHub's push webhook if the repository has
+// one, and otherwise Jenkins checks GitHub every two minutes.
 //
 // Jenkins is installed from deploy/jenkins/values.yaml and needs five
 // credentials: sdv-gcp-key (secret file), sdv-project-id, sdv-repo-path,
@@ -20,6 +24,11 @@ pipeline {
 
         // :latest on purpose, so applying it does not restart PostgreSQL every build.
         DB_IMAGE = "$REPO_PATH/sdv-cicd-db:latest"
+    }
+
+    triggers {
+        githubPush()
+        pollSCM('H/2 * * * *')
     }
 
     agent {
@@ -98,6 +107,12 @@ spec:
                     // apply, not delete + create, so the external IP survives.
                     sh 'sed "s|IMAGE_PLACEHOLDER|${IMAGE}|" deploy/k8s/dashboard.yaml | kubectl apply -f -'
                     sh 'kubectl rollout status deployment/sdv-dashboard --timeout=300s'
+                    // The real cloud: fleet PostgreSQL (its secret is created once by hand,
+                    // see fleet-db.yaml), then the Zenoh router + cloud service, same image.
+                    sh 'kubectl apply -f deploy/k8s/fleet-db.yaml'
+                    sh 'kubectl rollout status deployment/sdv-fleet-db --timeout=300s'
+                    sh 'sed "s|IMAGE_PLACEHOLDER|${IMAGE}|" deploy/k8s/cloud.yaml | kubectl apply -f -'
+                    sh 'kubectl rollout status deployment/sdv-cloud --timeout=300s'
                 }
             }
         }
@@ -127,18 +142,22 @@ spec:
                     sh 'gcloud container clusters get-credentials "$CLUSTER" --region="$CLUSTER_REGION"'
                     // The load balancer takes a minute or two to get an IP the first time.
                     sh '''
-                        for i in $(seq 1 60); do
-                            IP=$(kubectl get service/sdv-dashboard \
-                                 -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-                            if [ -n "$IP" ]; then
-                                echo "Dashboard and API: http://$IP"
-                                exit 0
+                        for svc in sdv-dashboard sdv-cloud; do
+                            IP=""
+                            for i in $(seq 1 60); do
+                                IP=$(kubectl get service/$svc \
+                                     -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                                [ -n "$IP" ] && break
+                                sleep 5
+                            done
+                            if [ -z "$IP" ]; then
+                                echo "The $svc load balancer had no external IP after 5 minutes."
+                                kubectl describe service/$svc
+                                exit 1
                             fi
-                            sleep 5
+                            echo "$svc: http://$IP"
                         done
-                        echo "The load balancer had no external IP after 5 minutes."
-                        kubectl describe service/sdv-dashboard
-                        exit 1
+                        echo "(sdv-dashboard = mock fleet, sdv-cloud = real vans over Zenoh)"
                     '''
                 }
             }

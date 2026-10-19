@@ -10,6 +10,7 @@
 #
 # $IMAGE is the dashboard image (deploy/docker/dashboard.Dockerfile); here it runs
 # `python -m cloud.app.main` instead of the all-in-one mock demo.
+# Apply fleet-db.yaml (and its secret) first: the data is stored in PostgreSQL.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -18,7 +19,7 @@ metadata:
   labels:
     app: sdv-cloud
 spec:
-  replicas: 1          # one router and one in-memory store; scale out after PostgreSQL
+  replicas: 1          # one Zenoh router; the data lives in PostgreSQL (fleet-db.yaml)
   selector:
     matchLabels:
       app: sdv-cloud
@@ -49,6 +50,11 @@ spec:
               value: 0.0.0.0
             - name: PORT
               value: "8000"
+            - name: DATABASE_URL          # PostgreSQL in fleet-db.yaml; the secret is created by hand
+              valueFrom:
+                secretKeyRef:
+                  name: sdv-fleet-db
+                  key: DATABASE_URL
           ports:
             - name: http
               containerPort: 8000

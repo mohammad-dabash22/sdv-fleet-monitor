@@ -115,20 +115,25 @@ one process, so these vans need a real Zenoh router to reach a dashboard.
 ### Everything real on GCP: vans on a VM, cloud on GKE, Zenoh in between
 
 ```
-sdv-vehicles VM (Ankaios, 3 agents)            GKE: sdv-cloud pod
-  per van: Kuksa + simulator + detector  --->  Zenoh router + cloud service ---> dashboard
-           + cloud_publisher (Zenoh)            (internal LB :7447)            (public LB :80)
+sdv-vehicles VM (Ankaios, 3 agents)            GKE: sdv-cloud pod                     GKE: sdv-fleet-db
+  per van: Kuksa + simulator + detector  --->  Zenoh router + cloud service  --->  PostgreSQL
+           + cloud_publisher (Zenoh)            (internal LB :7447)  dashboard (public LB :80)
 ```
 
-1. Cloud side (once): build the image and deploy `deploy/k8s/cloud.yaml`. It adds the
-   `sdv-cloud` pod next to the mock dashboard and does not change it.
+1. Cloud side. Jenkins deploys `deploy/k8s/fleet-db.yaml` and `deploy/k8s/cloud.yaml` on
+   every commit to main, next to the mock dashboard. Only the database password is set
+   up by hand, once (see the top of `fleet-db.yaml`). By hand it is:
 
    ```bash
    IMAGE=us-central1-docker.pkg.dev/<project>/sdv-fleet/sdv-fleet-cloud:<tag>
    gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE=$IMAGE .
+   kubectl apply -f deploy/k8s/fleet-db.yaml
    kubectl apply -f <(sed "s|IMAGE_PLACEHOLDER|$IMAGE|" deploy/k8s/cloud.yaml)
    kubectl get service sdv-cloud sdv-zenoh   # public dashboard IP, internal Zenoh IP
    ```
+
+   The cloud service stores telemetry, alerts and trips in PostgreSQL
+   (`DATABASE_URL=postgresql://...`); without `DATABASE_URL` it uses SQLite in memory.
 
 2. Vehicle side: on an Ubuntu VM in the same VPC, with podman and Ankaios installed,
    copy the repository and run, with the internal Zenoh IP from step 1:

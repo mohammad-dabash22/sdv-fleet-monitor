@@ -17,27 +17,7 @@ Ahmad Musleh, Giancarlo Sotelo Lajo, Mohammad Dabash.
 
 ## How it works
 
-```mermaid
-flowchart TB
-    subgraph VM["GCP VM sdv-vehicles: one Ankaios agent per van"]
-        direction LR
-        SIM["Simulator<br/>speed, position, battery"] -->|VSS signals| KUKSA[("Kuksa Databroker<br/>digital twin")]
-        KUKSA -->|subscribe| DET["Hazard detector"]
-        DET -->|"Vehicle.Hazard.* (t0)"| KUKSA
-        KUKSA -->|subscribe| PUB["Cloud publisher"]
-    end
-
-    subgraph GKE["Google Kubernetes Engine: the cloud"]
-        direction LR
-        ZR["Zenoh router"] --> CLOUD["Cloud service<br/>ingest, analytics, API (t1)"]
-        CLOUD --> PG[("PostgreSQL")]
-        CLOUD --> DASH["Dashboard<br/>map, alerts, latency, routes"]
-    end
-
-    PUB -->|"Zenoh: telemetry + hazards"| ZR
-    DASH --> OP(["Fleet operator"])
-    GH["GitHub main"] --> JK["Jenkins"] -->|"test, build, deploy"| GKE
-```
+![Architecture: the vans run on a GCP VM under Ankaios, the cloud runs on GKE, connected by Zenoh](docs/architecture.svg)
 
 **One hazard, start to finish:**
 

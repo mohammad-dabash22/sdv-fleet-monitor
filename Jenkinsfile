@@ -29,6 +29,13 @@ pipeline {
         // Deployment spec would not change between builds, kubectl apply would
         // report "unchanged", and the new image would never be rolled out.
         IMAGE = "$REPO_PATH/$APP_NAME:$BUILD_NUMBER"
+
+        // The log database is tagged :latest on purpose, the opposite of the
+        // dashboard. Its spec is then identical between builds, kubectl apply
+        // reports "unchanged", and PostgreSQL is not restarted on every deploy.
+        // Changing init.sql therefore does NOT reach a database that already
+        // exists; that is a schema migration, which is a manual job anyway.
+        DB_IMAGE = "$REPO_PATH/sdv-cicd-db:latest"
     }
 
     agent {
@@ -83,6 +90,20 @@ spec:
                     // IPv4 route to Artifact Registry and docker push fails there
                     // with "connection refused".
                     sh 'gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE=$IMAGE . --suppress-logs'
+                    // deploy/cicd-db/ is self-contained, so the plain -t form works here.
+                    sh 'gcloud builds submit -t $DB_IMAGE deploy/cicd-db --suppress-logs'
+                }
+            }
+        }
+
+        stage('database') {
+            steps {
+                container('gcloud') {
+                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud config set project $PROJECT'
+                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_ZONE'
+                    sh 'sed "s|IMAGE_PLACEHOLDER|$DB_IMAGE|" deploy/k8s/cicd-db.yaml | kubectl apply -f -'
+                    sh 'kubectl rollout status deployment/cicd-db --timeout=300s'
                 }
             }
         }
@@ -97,6 +118,24 @@ spec:
                     // survive, so the demo URL stays the same across builds.
                     sh 'sed "s|IMAGE_PLACEHOLDER|$IMAGE|" deploy/k8s/dashboard.yaml | kubectl apply -f -'
                     sh 'kubectl rollout status deployment/sdv-dashboard --timeout=300s'
+                }
+            }
+        }
+
+        stage('record') {
+            steps {
+                container('gcloud') {
+                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud config set project $PROJECT'
+                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_ZONE'
+                    // psql runs inside the database pod over its unix socket, so
+                    // no password and no client library are needed out here.
+                    sh '''
+                        POD=$(kubectl get pod -l app=cicd-db -o jsonpath='{.items[0].metadata.name}')
+                        kubectl exec "$POD" -- psql -U cicd -d cicd -q -c "INSERT INTO deployments (build_number, image, git_commit, branch) VALUES ($BUILD_NUMBER, '$IMAGE', '${GIT_COMMIT:-unknown}', '${GIT_BRANCH:-unknown}');"
+                        echo "--- deployment history ---"
+                        kubectl exec "$POD" -- psql -U cicd -d cicd -c "SELECT build_number, branch, left(git_commit, 7) AS commit, deployed_at FROM deployments ORDER BY id DESC LIMIT 10;"
+                    '''
                 }
             }
         }

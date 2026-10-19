@@ -1,0 +1,98 @@
+# The cloud half with REAL vehicle data: a Zenoh router + the cloud service
+# (ingestion, store, analytics, REST/WebSocket API and the dashboard).
+#
+# The vans run on the sdv-vehicles VM under Ankaios; their cloud_publisher sends
+# over Zenoh to the internal address of the sdv-zenoh service. This sits next to
+# the mock dashboard in dashboard.yaml and does not change it.
+#
+#   kubectl apply -f <(sed "s|IMAGE_PLACEHOLDER|$IMAGE|" deploy/k8s/cloud.yaml)
+#   kubectl get service sdv-cloud sdv-zenoh      # public dashboard IP, internal Zenoh IP
+#
+# $IMAGE is the dashboard image (deploy/docker/dashboard.Dockerfile); here it runs
+# `python -m cloud.app.main` instead of the all-in-one mock demo.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdv-cloud
+  labels:
+    app: sdv-cloud
+spec:
+  replicas: 1          # one router and one in-memory store; scale out after PostgreSQL
+  selector:
+    matchLabels:
+      app: sdv-cloud
+  template:
+    metadata:
+      labels:
+        app: sdv-cloud
+    spec:
+      containers:
+        - name: zenoh-router
+          image: docker.io/eclipse/zenoh:1.10.1    # same version as eclipse-zenoh in requirements.txt
+          ports:
+            - name: zenoh
+              containerPort: 7447
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+        - name: cloud
+          image: IMAGE_PLACEHOLDER
+          command: ["python", "-u", "-m", "cloud.app.main"]
+          env:
+            - name: TRANSPORT
+              value: zenoh
+            - name: ZENOH_ENDPOINT
+              value: tcp/127.0.0.1:7447      # the router in this pod
+            - name: HOST
+              value: 0.0.0.0
+            - name: PORT
+              value: "8000"
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+# Public: the dashboard with real data.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdv-cloud
+  labels:
+    app: sdv-cloud
+spec:
+  type: LoadBalancer
+  selector:
+    app: sdv-cloud
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+# Internal only: the Zenoh router, reachable from VMs in the same VPC (the vans).
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdv-zenoh
+  labels:
+    app: sdv-cloud
+  annotations:
+    networking.gke.io/load-balancer-type: "Internal"
+spec:
+  type: LoadBalancer
+  selector:
+    app: sdv-cloud
+  ports:
+    - name: zenoh
+      port: 7447
+      targetPort: zenoh

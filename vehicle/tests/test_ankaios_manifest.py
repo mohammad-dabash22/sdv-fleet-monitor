@@ -26,3 +26,13 @@ def test_every_van_gets_its_own_agent_and_port():
         assert f"agent: {vid}\n" in text
         assert f'"DATABROKER_PORT={port}"' in text
         assert f'["--port", "{port}"]' in text
+
+
+def test_zenoh_adds_a_publisher_per_van():
+    fleet = {"routes": {"A": {"speed_limit_kmh": 60}},
+             "vehicles": [{"vehicle_id": "veh-01", "route_id": "A", "databroker_port": 55555}]}
+    assert "publisher" not in ankaios_manifest.render(fleet)
+    text = ankaios_manifest.render(fleet, zenoh="tcp/10.0.0.5:7447")
+    assert "  veh-01-publisher:\n" in text
+    assert '"TRANSPORT=zenoh", "-e", "ZENOH_ENDPOINT=tcp/10.0.0.5:7447"' in text
+    assert '["vehicle.cloud_publisher.main"]' in text

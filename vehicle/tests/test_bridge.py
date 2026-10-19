@@ -37,6 +37,20 @@ def test_hazard_event_is_sent_once():
     assert event["lat"] == 43.9
 
 
+def test_hazard_active_before_start_is_not_resent():
+    got = collect("fleet/*/hazards")
+    bridge = Bridge(fake_zenoh.open(), {"vehicle_id": "veh-01", "route_id": "A"})
+    old = {vss.HAZARD_TYPE: Datapoint("OVERSPEED"), vss.HAZARD_SEVERITY: Datapoint(1),
+           vss.HAZARD_DETAIL: Datapoint("old"), vss.HAZARD_DETECTED_AT: Datapoint(500)}
+    bridge.skip_active_hazard(old)
+    bridge.on_updates(old)  # the Databroker replays its current values on subscribe
+    time.sleep(0.15)
+    assert got == []
+    bridge.on_updates({vss.HAZARD_TYPE: Datapoint("HARSH_BRAKING"), vss.HAZARD_DETECTED_AT: Datapoint(900)})
+    assert wait_for(lambda: len(got) == 1)
+    assert got[0][1]["type"] == "HARSH_BRAKING" and got[0][1]["t0_ms"] == 900
+
+
 def test_snapshot_shape():
     bridge = Bridge(fake_zenoh.open(), {"vehicle_id": "veh-01", "route_id": "A"})
     bridge.on_updates({vss.SPEED: Datapoint(42.0), vss.SOC: Datapoint(77.0), vss.POWER_STATE: Datapoint("ON"),

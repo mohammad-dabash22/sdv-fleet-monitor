@@ -9,9 +9,11 @@ config/fleet.json and run:
 Each van has its own Ankaios agent, named after its vehicle_id (like one agent
 per vehicle ECU). Per van: Kuksa Databroker + simulator + hazard_detector.
 
-NEXT PHASE: add the cloud_publisher workload once Zenoh is real (the fake Zenoh
-only works inside one process, so a publisher in its own container cannot reach
-the cloud).
+With --zenoh, every van also gets a cloud_publisher that sends to that Zenoh
+router (the fake Zenoh only works inside one process, so without a real router
+a publisher in its own container could not reach the cloud):
+
+    python -m tools.ankaios_manifest --zenoh tcp/<router-ip>:7447 --out state.cloud.yaml
 """
 
 from __future__ import annotations
@@ -68,7 +70,7 @@ def _workload(name: str, agent: str, image: str, options: list[str], args: list[
     return "\n".join(lines) + "\n"
 
 
-def render(fleet: dict, images: str = "localhost/sdv-fleet") -> str:
+def render(fleet: dict, images: str = "localhost/sdv-fleet", zenoh: str | None = None) -> str:
     out = [HEADER]
     for v in fleet["vehicles"]:
         vid, route = v["vehicle_id"], v["route_id"]
@@ -90,6 +92,10 @@ def render(fleet: dict, images: str = "localhost/sdv-fleet") -> str:
                              ["vehicle.simulator.main"], depends_on=broker))
         out.append(_workload(f"{vid}-detector", vid, f"{images}/vehicle:dev", app_options,
                              ["vehicle.hazard_detector.main"], depends_on=broker))
+        if zenoh:
+            publisher_options = app_options + ["-e", "TRANSPORT=zenoh", "-e", f"ZENOH_ENDPOINT={zenoh}"]
+            out.append(_workload(f"{vid}-publisher", vid, f"{images}/vehicle:dev", publisher_options,
+                                 ["vehicle.cloud_publisher.main"], depends_on=broker))
     return "".join(out)
 
 
@@ -98,11 +104,13 @@ def main() -> None:
     parser.add_argument("--out", type=Path, default=OUT, help=f"where to write (default {OUT.relative_to(ROOT)})")
     parser.add_argument("--images", default="localhost/sdv-fleet",
                         help="image prefix, e.g. a registry path on the cloud VM")
+    parser.add_argument("--zenoh", metavar="ENDPOINT",
+                        help="add a cloud_publisher per van that sends to this Zenoh router, e.g. tcp/10.0.0.5:7447")
     args = parser.parse_args()
 
     fleet = json.loads(FLEET.read_text(encoding="utf-8"))
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(render(fleet, args.images), encoding="utf-8")
+    args.out.write_text(render(fleet, args.images, args.zenoh), encoding="utf-8")
     print(f"Wrote {args.out} for {len(fleet['vehicles'])} vans: "
           + ", ".join(v["vehicle_id"] for v in fleet["vehicles"]))
 

@@ -14,6 +14,11 @@ controller:
     - credentials-binding:latest    # the credentials() calls in the Jenkinsfile
     - git:latest
     - github:latest                 # the push webhook
+    # Required, and easy to lose: this key REPLACES the chart's default plugin
+    # list rather than adding to it, and the chart creates the admin user
+    # through Configuration as Code. Drop this line and Jenkins starts cleanly,
+    # logs nothing wrong, and has no account you can log in with.
+    - configuration-as-code:latest
   resources:
     requests:
       cpu: "500m"

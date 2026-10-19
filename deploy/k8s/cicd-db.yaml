@@ -10,19 +10,19 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cicd-db
+  name: sdv-cicd-db
 type: Opaque
 stringData:
   # Demo credentials. Nothing outside the cluster can reach this database, but
   # for anything real these belong in Secret Manager, not in git.
-  POSTGRES_DB: cicd
-  POSTGRES_USER: cicd
-  POSTGRES_PASSWORD: cicdpassword
+  POSTGRES_DB: sdv_cicd
+  POSTGRES_USER: sdv_cicd
+  POSTGRES_PASSWORD: sdvcicdpassword
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: cicd-db
+  name: sdv-cicd-db
 spec:
   accessModes: [ReadWriteOnce]
   resources:
@@ -32,9 +32,9 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cicd-db
+  name: sdv-cicd-db
   labels:
-    app: cicd-db
+    app: sdv-cicd-db
 spec:
   replicas: 1
   strategy:
@@ -43,18 +43,18 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: cicd-db
+      app: sdv-cicd-db
   template:
     metadata:
       labels:
-        app: cicd-db
+        app: sdv-cicd-db
     spec:
       containers:
         - name: postgres
           image: IMAGE_PLACEHOLDER
           envFrom:
             - secretRef:
-                name: cicd-db
+                name: sdv-cicd-db
           env:
             # The mounted disk has a lost+found directory, which the official
             # image refuses to initialise into. Use a subdirectory of it.
@@ -72,22 +72,22 @@ spec:
               memory: 512Mi
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "cicd", "-d", "cicd"]
+              command: ["pg_isready", "-U", "sdv_cicd", "-d", "sdv_cicd"]
             initialDelaySeconds: 10
             periodSeconds: 5
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: cicd-db
+            claimName: sdv-cicd-db
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: cicd-db
+  name: sdv-cicd-db
 spec:
   type: ClusterIP
   selector:
-    app: cicd-db
+    app: sdv-cicd-db
   ports:
     - name: postgres
       port: 5432

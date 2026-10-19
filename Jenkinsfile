@@ -1,28 +1,28 @@
 // CI/CD for the SDV Fleet Monitor dashboard.
 //
-// On every commit: run the tests, build the image with Cloud Build, push it to
-// Artifact Registry, roll it out on GKE, and print the public URL.
+// On every commit: run the tests, build the images with Cloud Build, push them
+// to Artifact Registry, roll the dashboard out on GKE, record the rollout in
+// the deployment log, and print the public URL.
 //
-// Jenkins setup is the one from Lab 3 Part 2, and this pipeline deliberately
-// reuses the same five credential IDs, so a Jenkins that already ran that lab
-// needs nothing new:
+// Jenkins itself is installed from deploy/jenkins/values.yaml. It needs these
+// five credentials, created once under Manage Jenkins -> Credentials:
 //
-//   service_account   Secret file   the jenkins-sa JSON key
-//   project_id        Secret text   the GCP project id
-//   repo_path         Secret text   e.g. us-central1-docker.pkg.dev/<project>/<repo>
-//   cluster_name      Secret text   e.g. autopilot-cluster-1
-//   cluster_zone      Secret text   e.g. us-central1
+//   sdv-gcp-key          Secret file   JSON key for the sdv-jenkins service account
+//   sdv-project-id       Secret text   the GCP project id
+//   sdv-repo-path        Secret text   e.g. us-central1-docker.pkg.dev/<project>/sdv-fleet
+//   sdv-cluster-name     Secret text   e.g. sdv-fleet-cluster
+//   sdv-cluster-region   Secret text   e.g. us-central1
 //
 // Job: New Item -> Pipeline -> Build Triggers: "GitHub hook trigger for GITScm
 // polling" -> Pipeline script from SCM -> Script Path: Jenkinsfile.
 
 pipeline {
     environment {
-        SERVICE_ACCOUNT = credentials('service_account')
-        PROJECT         = credentials('project_id')
-        REPO_PATH       = credentials('repo_path')
-        CLUSTER         = credentials('cluster_name')
-        CLUSTER_ZONE    = credentials('cluster_zone')
+        GCP_KEY        = credentials('sdv-gcp-key')
+        PROJECT        = credentials('sdv-project-id')
+        REPO_PATH      = credentials('sdv-repo-path')
+        CLUSTER        = credentials('sdv-cluster-name')
+        CLUSTER_REGION = credentials('sdv-cluster-region')
 
         APP_NAME = 'sdv-fleet-dashboard'
         // Tagged with the build number, never :latest. With a fixed tag the
@@ -84,7 +84,7 @@ spec:
         stage('containerize') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
                     sh 'gcloud config set project $PROJECT'
                     // Cloud Build, not docker push: Cloud Shell has no working
                     // IPv4 route to Artifact Registry and docker push fails there
@@ -99,11 +99,11 @@ spec:
         stage('database') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
                     sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_ZONE'
+                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
                     sh 'sed "s|IMAGE_PLACEHOLDER|$DB_IMAGE|" deploy/k8s/cicd-db.yaml | kubectl apply -f -'
-                    sh 'kubectl rollout status deployment/cicd-db --timeout=300s'
+                    sh 'kubectl rollout status deployment/sdv-cicd-db --timeout=300s'
                 }
             }
         }
@@ -111,9 +111,9 @@ spec:
         stage('deploy') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
                     sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_ZONE'
+                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
                     // apply, not delete + create: the Service and its external IP
                     // survive, so the demo URL stays the same across builds.
                     sh 'sed "s|IMAGE_PLACEHOLDER|$IMAGE|" deploy/k8s/dashboard.yaml | kubectl apply -f -'
@@ -125,16 +125,16 @@ spec:
         stage('record') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
                     sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_ZONE'
+                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
                     // psql runs inside the database pod over its unix socket, so
                     // no password and no client library are needed out here.
                     sh '''
-                        POD=$(kubectl get pod -l app=cicd-db -o jsonpath='{.items[0].metadata.name}')
-                        kubectl exec "$POD" -- psql -U cicd -d cicd -q -c "INSERT INTO deployments (build_number, image, git_commit, branch) VALUES ($BUILD_NUMBER, '$IMAGE', '${GIT_COMMIT:-unknown}', '${GIT_BRANCH:-unknown}');"
+                        POD=$(kubectl get pod -l app=sdv-cicd-db -o jsonpath='{.items[0].metadata.name}')
+                        kubectl exec "$POD" -- psql -U sdv_cicd -d sdv_cicd -q -c "INSERT INTO deployments (build_number, image, git_commit, branch) VALUES ($BUILD_NUMBER, '$IMAGE', '${GIT_COMMIT:-unknown}', '${GIT_BRANCH:-unknown}');"
                         echo "--- deployment history ---"
-                        kubectl exec "$POD" -- psql -U cicd -d cicd -c "SELECT build_number, branch, left(git_commit, 7) AS commit, deployed_at FROM deployments ORDER BY id DESC LIMIT 10;"
+                        kubectl exec "$POD" -- psql -U sdv_cicd -d sdv_cicd -c "SELECT build_number, branch, left(git_commit, 7) AS commit, deployed_at FROM deployments ORDER BY id DESC LIMIT 10;"
                     '''
                 }
             }
@@ -143,9 +143,9 @@ spec:
         stage('service') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $SERVICE_ACCOUNT'
+                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
                     sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_ZONE'
+                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
                     // The load balancer takes a minute or two to be given an IP
                     // the first time. On later builds it is already there.
                     sh '''

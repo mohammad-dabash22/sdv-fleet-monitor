@@ -1,0 +1,13 @@
+# One Ankaios agent per van (%i = vehicle_id, e.g. veh-01); installed by deploy/ankaios/setup-vm.sh.
+[Unit]
+Description=Ankaios agent %i (SDV fleet)
+After=ank-server.service
+Wants=ank-server.service
+
+[Service]
+ExecStart=/usr/local/bin/ank-agent --insecure --name %i --server-url http://127.0.0.1:25551
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

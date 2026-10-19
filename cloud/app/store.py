@@ -1,16 +1,11 @@
 """Store: ALL database code lives here (tables: telemetry, alerts, trips).
 
-Today it uses SQLite in memory, so the demo needs nothing installed. The SQL
-is plain and works in PostgreSQL too; only _connect() and the "?" parameter
-style are SQLite-specific.
+DATABASE_URL picks the database:
+    sqlite:///:memory:                          the default: the demo and tests need nothing installed
+    postgresql://user:password@host:5432/fleet  PostgreSQL; the tables are created on connect
 
-NEXT PHASE (switch to PostgreSQL):
-    1. pip install psycopg2-binary
-    2. in _connect(): if the URL starts with "postgresql://", use
-       psycopg2.connect(url) and set self.param = "%s"
-    3. run cloud/db/schema.postgres.sql once (or mount it in the postgres container)
-    4. set DATABASE_URL=postgresql://user:password@host:5432/fleet
-Nothing outside this file should need to change.
+The SQL is plain and works in both. Queries are written with "?" and turned into
+"%s" for PostgreSQL, so no SQL text may contain a "?" or "%" of its own.
 """
 
 from __future__ import annotations
@@ -22,12 +17,14 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_SQLITE = Path(__file__).resolve().parents[1] / "db" / "schema.sqlite.sql"
+SCHEMA_POSTGRES = Path(__file__).resolve().parents[1] / "db" / "schema.postgres.sql"
 
 
 class Store:
     def __init__(self, url: str = "sqlite:///:memory:") -> None:
         self.lock = threading.Lock()
         self.param = "?"
+        self.postgres = False
         self.db = self._connect(url)
 
     def _connect(self, url: str) -> Any:
@@ -36,7 +33,16 @@ class Store:
             db.row_factory = sqlite3.Row
             db.executescript(SCHEMA_SQLITE.read_text(encoding="utf-8"))
             return db
-        raise ValueError(f"Unsupported DATABASE_URL: {url!r} (PostgreSQL comes next phase)")
+        if url.startswith(("postgresql://", "postgres://")):
+            import psycopg2  # type: ignore[import-untyped]
+            import psycopg2.extras  # type: ignore[import-untyped]
+            db = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+            db.autocommit = True
+            with db.cursor() as cur:
+                cur.execute(SCHEMA_POSTGRES.read_text(encoding="utf-8"))  # CREATE ... IF NOT EXISTS
+            self.param, self.postgres = "%s", True
+            return db
+        raise ValueError(f"Unsupported DATABASE_URL: {url!r} (use sqlite:/// or postgresql://)")
 
     # ------------------------------------------------------------ telemetry
     def add_telemetry(self, m: dict) -> None:
@@ -63,6 +69,7 @@ class Store:
             (a["vehicle_id"], a.get("vehicle_name"), a.get("route_id"), a["source"], a["type"],
              a.get("severity", 0), a.get("detail"), a.get("lat"), a.get("lon"), a.get("t0_ms"),
              a["ts_ms"], a.get("latency_ms")),
+            returning_id=True,
         )
 
     def clear_alerts(self, vehicle_id: str, ts: int, source: str, type_: str) -> int:
@@ -122,16 +129,34 @@ class Store:
         )
 
     # -------------------------------------------------------------- helpers
-    def _write(self, sql: str, params: tuple, rowcount: bool = False) -> int:
+    def _write(self, sql: str, params: tuple, rowcount: bool = False, returning_id: bool = False) -> int:
+        """Run an INSERT/UPDATE. Returns the row count, or the new row's id for an INSERT."""
+        sql = sql.replace("?", self.param)
+        if returning_id and self.postgres:
+            sql += " RETURNING id"  # psycopg2 has no lastrowid for identity columns
         with self.lock:
-            cur = self.db.execute(sql.replace("?", self.param), params)
-            self.db.commit()
-            return cur.rowcount if rowcount else (cur.lastrowid or 0)
+            cur = self.db.cursor()
+            try:
+                cur.execute(sql, params)
+                if rowcount:
+                    result = cur.rowcount
+                elif returning_id and self.postgres:
+                    result = cur.fetchone()["id"]
+                else:
+                    result = cur.lastrowid or 0
+                self.db.commit()  # PostgreSQL runs in autocommit mode, so this is a no-op there
+                return result
+            finally:
+                cur.close()
 
     def _read(self, sql: str, params: tuple) -> list[dict]:
         with self.lock:
-            cur = self.db.execute(sql.replace("?", self.param), params)
-            return [dict(row) for row in cur.fetchall()]
+            cur = self.db.cursor()
+            try:
+                cur.execute(sql.replace("?", self.param), params)
+                return [dict(row) for row in cur.fetchall()]
+            finally:
+                cur.close()
 
 
 def _now_ms() -> int:

@@ -1,6 +1,5 @@
--- NEXT PHASE: PostgreSQL schema (same tables and columns as schema.sqlite.sql).
--- Mount this file into the postgres container at /docker-entrypoint-initdb.d/
--- so the tables are created on first start.
+-- PostgreSQL schema (same tables and columns as schema.sqlite.sql).
+-- cloud/app/store.py runs it on every connect, so it must stay idempotent (IF NOT EXISTS).
 
 CREATE TABLE IF NOT EXISTS telemetry (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

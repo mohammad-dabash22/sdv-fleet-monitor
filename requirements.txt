@@ -5,6 +5,4 @@ uvicorn[standard]>=0.29
 # Real tools that are already wired in:
 kuksa-client==0.6.0  # Kuksa Databroker client (kuksa.val.v2)
 eclipse-zenoh==1.10.1  # vehicle-to-cloud transport; match the zenohd router version
-
-# NEXT PHASE (real tools), uncomment when you add them:
-# psycopg2-binary     # PostgreSQL driver for cloud/app/store.py
+psycopg2-binary==2.9.13  # PostgreSQL driver for cloud/app/store.py (DATABASE_URL=postgresql://...)

@@ -1,0 +1,83 @@
+# PostgreSQL for the fleet data (telemetry, alerts, trips), used by sdv-cloud
+# (cloud.yaml). Separate from sdv-cicd-db, which only holds the CI/CD deployment log.
+#
+# The password is not in this file. Create the secret once:
+#
+#   PW=$(openssl rand -hex 16)
+#   kubectl create secret generic sdv-fleet-db \
+#     --from-literal=POSTGRES_DB=fleet --from-literal=POSTGRES_USER=fleet \
+#     --from-literal=POSTGRES_PASSWORD=$PW \
+#     --from-literal=DATABASE_URL=postgresql://fleet:$PW@sdv-fleet-db:5432/fleet
+#   kubectl apply -f deploy/k8s/fleet-db.yaml
+#
+# The cloud service creates the tables on connect (cloud/db/schema.postgres.sql).
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sdv-fleet-db
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdv-fleet-db
+  labels:
+    app: sdv-fleet-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate     # ReadWriteOnce disk: a second pod could never attach it
+  selector:
+    matchLabels:
+      app: sdv-fleet-db
+  template:
+    metadata:
+      labels:
+        app: sdv-fleet-db
+    spec:
+      containers:
+        - name: postgres
+          image: docker.io/library/postgres:16
+          envFrom:
+            - secretRef:
+                name: sdv-fleet-db
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata   # the disk has a lost+found
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "fleet", "-d", "fleet"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sdv-fleet-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdv-fleet-db
+spec:
+  type: ClusterIP      # only reachable inside the cluster
+  selector:
+    app: sdv-fleet-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

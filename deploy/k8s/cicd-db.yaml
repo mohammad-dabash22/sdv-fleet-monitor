@@ -1,11 +1,6 @@
-# PostgreSQL for the CI/CD deployment log, in the cluster.
-#
-# Reachable only from inside the cluster (ClusterIP, no LoadBalancer): the
-# pipeline writes to it with `kubectl exec`, and nothing outside needs it.
-#
-# The dashboard does NOT use this database. It is deliberately separate from
-# the fleet data, so switching the application over to PostgreSQL later is an
-# independent change that cannot break the deployed demo.
+# PostgreSQL for the CI/CD deployment log. ClusterIP: the pipeline reaches it
+# with kubectl exec, nothing outside the cluster needs it.
+# The dashboard does not use this database.
 ---
 apiVersion: v1
 kind: Secret
@@ -13,8 +8,7 @@ metadata:
   name: sdv-cicd-db
 type: Opaque
 stringData:
-  # Demo credentials. Nothing outside the cluster can reach this database, but
-  # for anything real these belong in Secret Manager, not in git.
+  # Demo credentials, unreachable from outside the cluster.
   POSTGRES_DB: sdv_cicd
   POSTGRES_USER: sdv_cicd
   POSTGRES_PASSWORD: sdvcicdpassword
@@ -38,9 +32,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    # Recreate, not RollingUpdate: the disk is ReadWriteOnce, so a second pod
-    # could never attach it and a rolling update would sit there for ever.
-    type: Recreate
+    type: Recreate     # ReadWriteOnce disk: a second pod could never attach it
   selector:
     matchLabels:
       app: sdv-cicd-db
@@ -56,10 +48,8 @@ spec:
             - secretRef:
                 name: sdv-cicd-db
           env:
-            # The mounted disk has a lost+found directory, which the official
-            # image refuses to initialise into. Use a subdirectory of it.
             - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
+              value: /var/lib/postgresql/data/pgdata   # the disk has a lost+found
           ports:
             - name: postgres
               containerPort: 5432

@@ -63,8 +63,7 @@ def main() -> None:
                         help="fake (default) or kuksa: real Databrokers on the ports in config/fleet.json, "
                              "started with deploy/kuksa/docker-compose.yml")
     parser.add_argument("--host", default="127.0.0.1",
-                        help="address to serve on (use 0.0.0.0 in a container, so the port is "
-                             "reachable from outside it)")
+                        help="address to serve on (0.0.0.0 in a container)")
     args = parser.parse_args()
 
     import uvicorn

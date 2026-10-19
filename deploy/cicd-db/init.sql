@@ -1,10 +1,5 @@
--- The CI/CD deployment log.
---
--- Nothing in the application reads or writes this. The Jenkins pipeline writes
--- one row per successful rollout, so the database is a record of what the
--- pipeline actually did: which build, which image, which commit, and when.
---
--- The fleet data stays where it is; this database is only about deployments.
+-- The CI/CD deployment log: one row per rollout, written by the pipeline.
+-- Separate from the fleet data; the application never touches it.
 
 CREATE TABLE IF NOT EXISTS deployments (
     id            SERIAL PRIMARY KEY,

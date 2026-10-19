@@ -1,20 +1,13 @@
-# Helm values for the Jenkins that builds and deploys this project.
+# helm install sdv-jenkins -f deploy/jenkins/values.yaml jenkinsci/jenkins --wait
 #
-#   helm repo add jenkinsci https://charts.jenkins.io && helm repo update
-#   helm install sdv-jenkins -f deploy/jenkins/values.yaml jenkinsci/jenkins --wait
-#
-# The release name matters: it becomes the in-cluster hostname the build agents
-# call back on (http://sdv-jenkins:8080 and sdv-jenkins-agent:50000).
+# The release name becomes the hostname agents call back on
+# (http://sdv-jenkins:8080, sdv-jenkins-agent:50000).
 
 controller:
-  # additionalPlugins EXTENDS the chart's own default plugin list.
-  # installPlugins would REPLACE it, which silently drops defaults the chart
-  # depends on - configuration-as-code among them, which is how it creates the
-  # admin user. Jenkins then starts with no errors and no account to log in as.
-  # Everything the pipeline needs beyond the defaults goes here.
+  # additionalPlugins extends the chart's defaults; installPlugins replaces them.
   additionalPlugins:
-    - credentials-binding:latest    # the credentials() calls in the Jenkinsfile
-    - github:latest                 # the push webhook
+    - credentials-binding:latest
+    - github:latest
   resources:
     requests:
       cpu: "500m"
@@ -22,14 +15,11 @@ controller:
     limits:
       cpu: "1"
       memory: "4Gi"
-  # Heap below the container limit, or the JVM grows into the limit and the
-  # kernel kills the pod instead of the JVM collecting garbage.
-  javaOpts: "-Xmx3g"
+  javaOpts: "-Xmx3g"            # below the memory limit, or the pod is OOM-killed
   serviceType: LoadBalancer
 
 agent:
-  # Fallback only. The real build pod is declared in the Jenkinsfile, which
-  # sets its own requests per container.
+  # Fallback only; the Jenkinsfile declares its own build pod.
   resources:
     requests:
       cpu: "250m"

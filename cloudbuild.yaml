@@ -1,12 +1,7 @@
-# Cloud Build config for the dashboard image.
+# Builds the dashboard image. Needed because the Dockerfile is not at the root
+# of the source, which `gcloud builds submit -t` requires.
 #
-# `gcloud builds submit -t <image>` only works when the Dockerfile sits at the
-# root of the uploaded source. Ours is in deploy/docker/ while the build context
-# has to be the repository root (the image needs cloud/, vehicle/ and fakes/),
-# so the build step is spelled out here instead.
-#
-#   gcloud builds submit --config cloudbuild.yaml \
-#       --substitutions _IMAGE=$REPO_PATH/sdv-fleet-dashboard:latest .
+#   gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE=<image> .
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -20,4 +15,4 @@ images:
   - ${_IMAGE}
 
 options:
-  logging: CLOUD_LOGGING_ONLY   # no bucket needed, and --suppress-logs stays quiet
+  logging: CLOUD_LOGGING_ONLY

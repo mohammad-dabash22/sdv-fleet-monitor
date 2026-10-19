@@ -1,0 +1,14 @@
+# Ankaios server for the van fleet; installed by deploy/ankaios/setup-vm.sh.
+# Insecure mode (no TLS) is for the course demo: server and agents run on the same VM.
+[Unit]
+Description=Ankaios server (SDV fleet)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/ank-server --insecure --startup-manifest /etc/ankaios/state.yaml
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -73,6 +73,18 @@ class Bridge:
                 self.flush_timer.daemon = True
                 self.flush_timer.start()
 
+    def skip_active_hazard(self, current: dict) -> None:
+        """Do not send a hazard that was already active before this publisher started.
+
+        On (re)start the Databroker hands over its current values, including an old
+        hazard. Sending it again would count as a new alert with a stale t0, so the
+        latency would show how long the publisher was down, not the network.
+        """
+        kind, t0 = current.get(vss.HAZARD_TYPE), current.get(vss.HAZARD_DETECTED_AT)
+        kind, t0 = getattr(kind, "value", None), getattr(t0, "value", None)
+        if kind not in (None, vss.NO_HAZARD) and t0 is not None:
+            self.last_hazard = (kind, t0)
+
     def flush_hazard(self) -> None:
         with self.lock:
             v = dict(self.latest)
@@ -111,6 +123,7 @@ def run(cfg: VehicleConfig, client: Any, stop: threading.Event, session: Any = N
     bridge = Bridge(session, {"vehicle_id": cfg.vehicle_id, "route_id": cfg.route_id}, cfg.telemetry_hz)
     threading.Thread(target=bridge.telemetry_loop, args=(stop,), name=f"{cfg.vehicle_id}-telemetry",
                      daemon=True).start()
+    bridge.skip_active_hazard(client.get_current_values(vss.HAZARD_PATHS))
     for updates in client.subscribe_current_values(SUBSCRIBED_PATHS):
         if stop.is_set():
             break

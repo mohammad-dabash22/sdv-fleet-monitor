@@ -108,9 +108,51 @@ for v in veh-01 veh-02 veh-03; do ank-agent --insecure --name $v --server-url ht
 ank -k get workloads                       # 9 workloads, all Running(Ok)
 ```
 
-If a container stops, Ankaios starts it again (`restartPolicy: ALWAYS`). The
-cloud_publisher joins the manifest once Zenoh is real: the fake Zenoh only works
-inside one process, so these vans do not reach the dashboard yet.
+If a container stops, Ankaios starts it again (`restartPolicy: ALWAYS`). Without
+`--zenoh` the manifest has no cloud_publisher: the fake Zenoh only works inside
+one process, so these vans need a real Zenoh router to reach a dashboard.
+
+### Everything real on GCP: vans on a VM, cloud on GKE, Zenoh in between
+
+```
+sdv-vehicles VM (Ankaios, 3 agents)            GKE: sdv-cloud pod
+  per van: Kuksa + simulator + detector  --->  Zenoh router + cloud service ---> dashboard
+           + cloud_publisher (Zenoh)            (internal LB :7447)            (public LB :80)
+```
+
+1. Cloud side (once): build the image and deploy `deploy/k8s/cloud.yaml`. It adds the
+   `sdv-cloud` pod next to the mock dashboard and does not change it.
+
+   ```bash
+   IMAGE=us-central1-docker.pkg.dev/<project>/sdv-fleet/sdv-fleet-cloud:<tag>
+   gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE=$IMAGE .
+   kubectl apply -f <(sed "s|IMAGE_PLACEHOLDER|$IMAGE|" deploy/k8s/cloud.yaml)
+   kubectl get service sdv-cloud sdv-zenoh   # public dashboard IP, internal Zenoh IP
+   ```
+
+2. Vehicle side: on an Ubuntu VM in the same VPC, with podman and Ankaios installed,
+   copy the repository and run, with the internal Zenoh IP from step 1:
+
+   ```bash
+   sudo deploy/ankaios/setup-vm.sh tcp/<sdv-zenoh-ip>:7447
+   ```
+
+   Ankaios then runs 12 workloads (4 per van) as systemd services, so the fleet
+   comes back after a VM restart.
+
+3. Latency test (on the VM):
+
+   ```bash
+   sudo podman run --rm --net=host -v $PWD/tools:/srv/tools:ro --entrypoint python \
+       localhost/sdv-fleet/vehicle:dev -m tools.inject_hazards --ports 55555,55556,55557 --count 50
+   ```
+
+   Result on 2026-10-19 (VM in us-central1-a to GKE, 64 hazards): median 58 ms,
+   p95 65 ms, max 66 ms. The publisher waits 50 ms for a hazard's signals to
+   settle, which is most of that time.
+
+To save credits between demos: `gcloud compute instances stop sdv-vehicles` and
+`kubectl scale deployment sdv-cloud --replicas=0`; start them again the same way.
 
 ### What you will see
 

@@ -67,12 +67,12 @@ spec:
         stage('containerize') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
-                    sh 'gcloud config set project $PROJECT'
+                    sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                    sh 'gcloud config set project "$PROJECT"'
                     // Cloud Build, not docker push: Cloud Shell's IPv4 route to
                     // Artifact Registry is broken.
-                    sh 'gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE=$IMAGE . --suppress-logs'
-                    sh 'gcloud builds submit -t $DB_IMAGE deploy/cicd-db --suppress-logs'
+                    sh 'gcloud builds submit --config cloudbuild.yaml --substitutions _IMAGE="$IMAGE" . --suppress-logs'
+                    sh 'gcloud builds submit -t "$DB_IMAGE" deploy/cicd-db --suppress-logs'
                 }
             }
         }
@@ -80,10 +80,10 @@ spec:
         stage('database') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
-                    sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
-                    sh 'sed "s|IMAGE_PLACEHOLDER|$DB_IMAGE|" deploy/k8s/cicd-db.yaml | kubectl apply -f -'
+                    sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                    sh 'gcloud config set project "$PROJECT"'
+                    sh 'gcloud container clusters get-credentials "$CLUSTER" --region="$CLUSTER_REGION"'
+                    sh 'sed "s|IMAGE_PLACEHOLDER|${DB_IMAGE}|" deploy/k8s/cicd-db.yaml | kubectl apply -f -'
                     sh 'kubectl rollout status deployment/sdv-cicd-db --timeout=300s'
                 }
             }
@@ -92,11 +92,11 @@ spec:
         stage('deploy') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
-                    sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
+                    sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                    sh 'gcloud config set project "$PROJECT"'
+                    sh 'gcloud container clusters get-credentials "$CLUSTER" --region="$CLUSTER_REGION"'
                     // apply, not delete + create, so the external IP survives.
-                    sh 'sed "s|IMAGE_PLACEHOLDER|$IMAGE|" deploy/k8s/dashboard.yaml | kubectl apply -f -'
+                    sh 'sed "s|IMAGE_PLACEHOLDER|${IMAGE}|" deploy/k8s/dashboard.yaml | kubectl apply -f -'
                     sh 'kubectl rollout status deployment/sdv-dashboard --timeout=300s'
                 }
             }
@@ -105,9 +105,9 @@ spec:
         stage('record') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
-                    sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
+                    sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                    sh 'gcloud config set project "$PROJECT"'
+                    sh 'gcloud container clusters get-credentials "$CLUSTER" --region="$CLUSTER_REGION"'
                     // psql runs in the database pod over its unix socket: no password needed.
                     sh '''
                         POD=$(kubectl get pod -l app=sdv-cicd-db -o jsonpath='{.items[0].metadata.name}')
@@ -122,9 +122,9 @@ spec:
         stage('service') {
             steps {
                 container('gcloud') {
-                    sh 'gcloud auth activate-service-account --key-file $GCP_KEY'
-                    sh 'gcloud config set project $PROJECT'
-                    sh 'gcloud container clusters get-credentials $CLUSTER --region=$CLUSTER_REGION'
+                    sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                    sh 'gcloud config set project "$PROJECT"'
+                    sh 'gcloud container clusters get-credentials "$CLUSTER" --region="$CLUSTER_REGION"'
                     // The load balancer takes a minute or two to get an IP the first time.
                     sh '''
                         for i in $(seq 1 60); do

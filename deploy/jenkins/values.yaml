@@ -19,6 +19,9 @@ controller:
   serviceType: LoadBalancer
 
 agent:
+  # Set explicitly so the build pod always finds the controller.
+  jenkinsUrl: "http://sdv-jenkins:8080"
+  jenkinsTunnel: "sdv-jenkins-agent:50000"
   # Fallback only; the Jenkinsfile declares its own build pod.
   resources:
     requests:

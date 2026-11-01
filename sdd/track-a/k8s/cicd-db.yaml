@@ -1,0 +1,84 @@
+# PostgreSQL for the CI/CD deployment log. ClusterIP: the pipeline reaches it
+# with kubectl exec, nothing outside the cluster needs it.
+# The dashboard does not use this database.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sdv-cicd-db
+type: Opaque
+stringData:
+  # Demo credentials, unreachable from outside the cluster.
+  POSTGRES_DB: sdv_cicd
+  POSTGRES_USER: sdv_cicd
+  POSTGRES_PASSWORD: sdvcicdpassword
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sdv-cicd-db
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sdv-cicd-db
+  labels:
+    app: sdv-cicd-db
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate     # ReadWriteOnce disk: a second pod could never attach it
+  selector:
+    matchLabels:
+      app: sdv-cicd-db
+  template:
+    metadata:
+      labels:
+        app: sdv-cicd-db
+    spec:
+      containers:
+        - name: postgres
+          image: IMAGE_PLACEHOLDER
+          envFrom:
+            - secretRef:
+                name: sdv-cicd-db
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata   # the disk has a lost+found
+          ports:
+            - name: postgres
+              containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "sdv_cicd", "-d", "sdv_cicd"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: sdv-cicd-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sdv-cicd-db
+spec:
+  type: ClusterIP
+  selector:
+    app: sdv-cicd-db
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres

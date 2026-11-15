@@ -29,7 +29,9 @@ def topic(name):
 
 def test_req_027_payload_is_copied_unchanged():
     started_bridge()
-    raw = b'{"vehicle_id":"veh-02",  "speed_kmh": -40,"odd spacing": true}'   # even an invalid message
+    # Even an invalid message, with leading and trailing whitespace: the bridge must not touch a byte
+    # (the whitespace was added after mutation testing in the T13 review showed a .strip() went unnoticed).
+    raw = b' \t{"vehicle_id":"veh-02",  "speed_kmh": -40,"odd spacing": true}\n'
     fake_zenoh.open().put("fleet/veh-02/telemetry", raw)
     assert wait_for(lambda: len(topic("fleet-telemetry")) == 1)
     assert topic("fleet-telemetry")[0].data == raw

@@ -55,6 +55,14 @@ def test_req_031_records_out_of_order_are_sorted_by_time():
     assert trip["stop_time_s"] == pytest.approx(1.0)   # only t=2 s; the last record of a trip has no interval
 
 
+def test_req_031_exactly_2_kmh_is_moving_not_stopped():
+    # Found by mutation testing in the T13 review: "below 2 km/h" had no boundary case.
+    records = [rec(0, 1, 40, 0.0, 50), rec(1, 2, 2.0, 1.0, 50), rec(2, 2, 1.99, 1.0, 50), rec(3, 2, 40, 1.1, 50),
+               rec(4, 3, 40, 2.0, 50)]
+    (trip,) = trips(records, [])
+    assert trip["stop_time_s"] == pytest.approx(1.0)        # only the 1.99 km/h sample
+
+
 def test_req_031_zero_distance_trip_has_no_rates():
     records = [rec(0, 1, 0, 5.0, 50), rec(1, 2, 0, 5.0, 50), rec(2, 2, 0, 5.0, 50), rec(3, 3, 0, 5.0, 50)]
     (trip,) = trips(records, [])

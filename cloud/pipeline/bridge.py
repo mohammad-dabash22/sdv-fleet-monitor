@@ -7,16 +7,17 @@ It sits NEXT TO the live path (Zenoh -> CloudService -> dashboard), never on it:
 check or change a message, and a failed publish is logged and skipped. The Beam pipeline does the
 checking (it must also see the bad messages that CloudService rejects).
 
-On GKE it runs as its own container in the sdv-cloud pod, next to the Zenoh router:
-    PUBSUB=gcp GCP_PROJECT=<project> TRANSPORT=zenoh ZENOH_ENDPOINT=tcp/127.0.0.1:7447 \
-        python -m cloud.pipeline.bridge
+On GKE it runs as its own container in the sdv-cloud pod, next to the Zenoh router (deploy/k8s/cloud.yaml):
+    PUBSUB=gcp TRANSPORT=zenoh ZENOH_ENDPOINT=tcp/127.0.0.1:7447 python -m cloud.pipeline.bridge
+GCP_PROJECT is optional there: without it the project comes from the GKE metadata server.
 """
 
 from __future__ import annotations
 
 import os
 import threading
-from typing import Any
+import time
+from typing import Any, Callable
 
 from cloud.app.transport import HAZARD_KEYS, TELEMETRY_KEYS, open_session
 from cloud.pipeline.pubsub import TOPICS, open_publisher
@@ -63,10 +64,31 @@ class PubSubBridge:
         print(f"[bridge] publish failed for {key}: {exc!r}", flush=True)
 
 
+def connect_publisher(kind: str, project: str | None, wait: Callable[[float], Any] = time.sleep,
+                      retry_s: float = 60.0) -> tuple[Any, str]:
+    """Open the publisher, retrying until it works; never raises.
+
+    On GKE the bridge is a container in the sdv-cloud pod. If it crashed while Pub/Sub permissions are
+    missing (one-time setup, docs/pipeline.md), the pod would turn not-Ready and take the live dashboard
+    down with it. So it waits and logs instead.
+    """
+    while True:
+        try:
+            publisher = open_publisher(kind)
+            if not project:
+                import google.auth  # type: ignore[import-untyped]
+                project = google.auth.default()[1]   # the GKE node's project, from the metadata server
+            return publisher, project or "local"
+        except Exception as exc:
+            print(f"[bridge] Pub/Sub not ready ({exc!r}); retrying in {retry_s:.0f} s", flush=True)
+            wait(retry_s)
+
+
 def main() -> None:
     session = open_session(os.environ.get("TRANSPORT", "fake"), os.environ.get("ZENOH_ENDPOINT", "tcp/127.0.0.1:7447"))
-    bridge = PubSubBridge(session, open_publisher(os.environ.get("PUBSUB", "fake")),
-                          os.environ.get("GCP_PROJECT", "local"))
+    kind = os.environ.get("PUBSUB", "fake")
+    publisher, project = connect_publisher(kind, os.environ.get("GCP_PROJECT") or ("local" if kind == "fake" else None))
+    bridge = PubSubBridge(session, publisher, project)
     bridge.start()
     print(f"[bridge] forwarding fleet/** to Pub/Sub topics {sorted(bridge.topics.values())}", flush=True)
     stop = threading.Event()

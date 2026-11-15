@@ -76,6 +76,24 @@ spec:
               port: http
             initialDelaySeconds: 30
             periodSeconds: 20
+        # V1 data pipeline (spec REQ-027): copies every raw message from the Zenoh router above to
+        # Pub/Sub. Next to the live path, never on it. Needs Pub/Sub publish permission for the pod
+        # (one-time setup, docs/pipeline.md); until then it logs "Pub/Sub not ready" and retries
+        # instead of crashing, so it can never take the dashboard down.
+        - name: bridge
+          image: IMAGE_PLACEHOLDER
+          command: ["python", "-u", "-m", "cloud.pipeline.bridge"]
+          env:
+            - name: PUBSUB
+              value: gcp
+            - name: TRANSPORT
+              value: zenoh
+            - name: ZENOH_ENDPOINT
+              value: tcp/127.0.0.1:7447      # the router in this pod
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
 ---
 # Public: the dashboard with real data.
 apiVersion: v1

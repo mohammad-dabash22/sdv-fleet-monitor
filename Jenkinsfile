@@ -98,6 +98,30 @@ spec:
             }
         }
 
+        // V1 data pipeline (spec REQ-037 AC1): the two Pub/Sub topics and the subscriptions the Dataflow
+        // job reads. Idempotent: each is created only when missing. A failure here (for example, no
+        // Pub/Sub permission for the Jenkins service account yet) marks the build UNSTABLE but does not
+        // stop the deploy below: the live system does not depend on Pub/Sub.
+        stage('pubsub') {
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    container('gcloud') {
+                        sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                        sh 'gcloud config set project "$PROJECT"'
+                        sh '''
+                            for kind in telemetry hazards; do
+                                gcloud pubsub topics describe "fleet-$kind" >/dev/null 2>&1 \
+                                    || gcloud pubsub topics create "fleet-$kind"
+                                gcloud pubsub subscriptions describe "fleet-$kind-beam" >/dev/null 2>&1 \
+                                    || gcloud pubsub subscriptions create "fleet-$kind-beam" --topic "fleet-$kind" \
+                                           --message-retention-duration=1h
+                            done
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('deploy') {
             steps {
                 container('gcloud') {

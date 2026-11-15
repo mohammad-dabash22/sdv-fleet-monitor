@@ -69,6 +69,25 @@ def test_req_027_publish_failure_does_not_stop_bridge(capfd):
     assert "publish failed" in out and "handler error" not in out   # logged by the bridge, not a crash
 
 
+def test_req_027_bridge_waits_for_pubsub_instead_of_crashing(monkeypatch, capfd):
+    """On GKE the bridge is a container in the sdv-cloud pod: if it crashed while Pub/Sub credentials are
+    missing, the pod would turn not-Ready and the live dashboard would go down with it."""
+    from cloud.pipeline import bridge as bridge_module
+    attempts, waits = [], []
+
+    def flaky_open(kind):
+        attempts.append(kind)
+        if len(attempts) < 3:
+            raise PermissionError("no credentials yet")
+        return fake_pubsub.PublisherClient()
+
+    monkeypatch.setattr(bridge_module, "open_publisher", flaky_open)
+    publisher, project = bridge_module.connect_publisher("gcp", "my-project", wait=waits.append, retry_s=60)
+    assert attempts == ["gcp"] * 3 and waits == [60, 60]
+    assert project == "my-project" and publisher is not None
+    assert capfd.readouterr().out.count("Pub/Sub not ready") == 2
+
+
 def test_req_027_buffer_keeps_last_hour():
     fake_pubsub.reset()
     clock = [0.0]

@@ -118,6 +118,13 @@ class CloudService:
                 self.clients.discard(ws)
 
 
+EXTERNAL_PIPELINE = "external"   # the pipeline runs elsewhere (Dataflow) and only writes the tables
+
+
+def _round(value: Any, digits: int) -> Any:
+    return round(value, digits) if isinstance(value, (int, float)) else value
+
+
 def _decode(sample: Any) -> dict | None:
     """The message as a dict, or None if it is not a JSON object (such messages are ignored, REQ-009)."""
     try:
@@ -152,6 +159,7 @@ def create_app(cfg: CloudConfig | None = None, session: Any = None) -> FastAPI:
 
     app = FastAPI(title="SDV Fleet Monitor", lifespan=lifespan)
     app.state.service = service
+    app.state.pipeline = EXTERNAL_PIPELINE   # run_demo.py replaces it with its in-process batch loop, or None
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
     @app.get("/", include_in_schema=False)
@@ -191,28 +199,39 @@ def create_app(cfg: CloudConfig | None = None, session: Any = None) -> FastAPI:
         return latency_stats(service.store.latencies())
 
     @app.get("/api/routes")
-    def routes() -> list[dict]:
+    def routes() -> dict:
+        """The route report (REQ-034): numbers from the Beam pipeline's route_stats view, never computed here."""
         names = service.analytics.routes
-        rows = {r["route_id"]: r for r in service.store.route_summary()}
+        rows = {r["route_id"]: r for r in service.store.route_stats()}
         out = []
         for route_id in sorted(set(names) | set(rows)):
-            r = rows.get(route_id, {"trips": 0, "distance_km": 0, "trip_hazards": 0,
-                                    "avg_energy_pct": None, "hazard_alerts": 0})
-            km = r["distance_km"] or 0
+            r = rows.get(route_id, {})
             out.append({
                 "route_id": route_id,
                 "name": names.get(route_id, {}).get("name", route_id),
-                "trips": r["trips"],
-                "distance_km": round(km, 1),
-                "hazards_per_100km": round(r["trip_hazards"] * 100 / km, 1) if km > 0 else None,
-                "avg_energy_pct": round(r["avg_energy_pct"], 2) if r["avg_energy_pct"] is not None else None,
-                "hazard_alerts": r["hazard_alerts"],
+                "trips": r.get("trips", 0),
+                "distance_km": _round(r.get("distance_km"), 2),
+                "energy_pct_per_km": _round(r.get("energy_pct_per_km"), 3),
+                "avg_speed_kmh": _round(r.get("avg_speed_kmh"), 1),
+                "stop_time_s_per_trip": _round(r.get("stop_time_s_per_trip"), 1),
+                "hazards": r.get("hazards", 0),
+                "hazards_per_100km": _round(r.get("hazards_per_100km"), 1),
             })
-        return out
+        updated = [r["updated_ms"] for r in rows.values() if r.get("updated_ms") is not None]
+        return {"routes": out, "updated_ms": max(updated) if updated else None,
+                "flagged_records": service.store.quality_flag_count(), "pipeline": pipeline_status()}
+
+    def pipeline_status() -> dict:
+        pipeline = app.state.pipeline
+        if pipeline is None:                       # run_demo.py without Beam (Kuksa venv)
+            return {"installed": False, "mode": None}
+        if pipeline == EXTERNAL_PIPELINE:          # on GKE: the Dataflow job writes the tables
+            return {"installed": True, "mode": "external"}
+        return pipeline.status()                   # run_demo.py: the batch loop in this process
 
     @app.get("/api/trips")
     def trips(limit: int = 20) -> list[dict]:
-        return service.store.recent_trips(limit)
+        return service.store.trip_stats(limit)
 
     @app.get("/api/history/{vehicle_id}")
     def history(vehicle_id: str, minutes: float = 10) -> list[dict]:

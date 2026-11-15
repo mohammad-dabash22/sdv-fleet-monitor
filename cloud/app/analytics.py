@@ -37,6 +37,7 @@ class Twin:
     last_seen: float = 0.0
     online: bool = False
     hazard: dict | None = None
+    last_soc: float | None = None     # for the ENERGY_DROP rule
 
     def as_dict(self) -> dict:
         return {
@@ -166,20 +167,20 @@ class FleetAnalytics:
         }
 
     def _track_energy(self, twin: Twin, msg: dict, now: float) -> list[dict]:
-        tracker, soc = self.trips.get(twin.vehicle_id), msg.get("soc_pct")
-        if tracker is None or soc is None or tracker.last_energy is None:
-            if tracker is not None:
-                tracker.last_energy = soc
-            return []
+        """ENERGY_DROP: the battery fell more than ENERGY_DROP_PCT in one sample. Uses the twin's last
+        value, not the trip tracker's, so the rule survives when trip tracking moves to Beam (REQ-013)."""
+        soc, last = msg.get("soc_pct"), twin.last_soc
         events: list[dict] = []
-        drop = tracker.last_energy - soc
-        if drop > 0:
-            tracker.energy_used_pct += drop
+        if soc is not None and last is not None:
+            drop = last - soc        # a jump up means the van was charged: that is not a drop
+            tracker = self.trips.get(twin.vehicle_id)
+            if drop > 0 and tracker is not None:
+                tracker.energy_used_pct += drop
             if drop > ENERGY_DROP_PCT:
                 events.append({"kind": "alert", "data": self._cloud_alert(
                     twin, "ENERGY_DROP", 2, f"Battery fell {drop:.1f}% in one sample", now)})
-        # a jump up means the van was charged: that is not energy used
-        tracker.last_energy = soc
+        if soc is not None:
+            twin.last_soc = soc
         return events
 
     def _track_trip(self, twin: Twin, msg: dict, now: float) -> list[dict]:

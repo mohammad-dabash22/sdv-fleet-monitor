@@ -70,6 +70,43 @@ def test_req_009_malformed_json_is_ignored(capfd):
     assert "handler error" not in capfd.readouterr().out
 
 
+TRIP = {"vehicle_id": "veh-02", "route_id": "B", "trip_id": 2, "started_ms": 1000, "ended_ms": 9000, "samples": 12,
+        "distance_km": 2.0, "energy_used_pct": 1.0, "energy_pct_per_km": 0.5, "avg_speed_kmh": 30.0,
+        "stop_time_s": 4.0, "hazards": 3, "hazards_per_100km": 150.0}
+
+
+def test_req_034_routes_read_route_stats():
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        client.app.state.service.store.upsert_trip_stats(TRIP, processed_at_ms=12345)
+        body = client.get("/api/routes").json()
+        routes = {r["route_id"]: r for r in body["routes"]}
+        assert sorted(routes) == ["A", "B", "C"]                 # every route in config/fleet.json
+        b = routes["B"]
+        assert b["name"].startswith("Route B") and b["trips"] == 1
+        assert b["distance_km"] == 2.0 and b["energy_pct_per_km"] == 0.5 and b["avg_speed_kmh"] == 30.0
+        assert b["stop_time_s_per_trip"] == 4.0 and b["hazards_per_100km"] == 150.0
+        assert routes["A"]["trips"] == 0 and routes["A"]["hazards_per_100km"] is None
+        assert body["updated_ms"] == 12345
+
+
+def test_req_034_trips_read_trip_stats():
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        client.app.state.service.store.upsert_trip_stats(TRIP, processed_at_ms=1)
+        (trip,) = client.get("/api/trips").json()
+        assert trip["trip_id"] == 2 and trip["hazards"] == 3
+
+
+def test_req_034_flagged_count_and_pipeline_status():
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        client.app.state.service.store.upsert_quality_flag(
+            {"id": "x1", "kind": "telemetry", "problems": "LATE", "raw": "{}"}, processed_at_ms=1)
+        body = client.get("/api/routes").json()
+        assert body["flagged_records"] == 1
+        assert body["pipeline"]["mode"] == "external"            # cloud.app.main on GKE: Dataflow writes the tables
+        client.app.state.pipeline = None                         # run_demo.py in the Kuksa venv: no Beam
+        assert client.get("/api/routes").json()["pipeline"] == {"installed": False, "mode": None}
+
+
 def test_hazard_flows_to_alerts_and_can_be_acked():
     with TestClient(create_app(CloudConfig(transport="fake"))) as client:
         bus = fake_zenoh.open()

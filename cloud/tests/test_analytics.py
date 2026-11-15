@@ -74,6 +74,16 @@ def test_req_029_partial_message_then_full_message():
     assert fa.twins["veh-02"].online
 
 
+def test_req_013_energy_drop_alert():
+    fa = FleetAnalytics(FLEET)
+    fa.ingest_telemetry(telemetry(soc=80.0), 1.0)
+    assert "alert" not in kinds(fa.ingest_telemetry(telemetry(soc=78.0), 2.0))     # 2 % in one sample: normal
+    events = fa.ingest_telemetry(telemetry(soc=74.0), 3.0)                          # 4 % in one sample
+    alert = next(e["data"] for e in events if e["kind"] == "alert")
+    assert alert["type"] == "ENERGY_DROP" and alert["source"] == "cloud"
+    assert "alert" not in kinds(fa.ingest_telemetry(telemetry(soc=100.0), 4.0))    # charging is not a drop
+
+
 def test_offline_then_back_online():
     fa = FleetAnalytics(FLEET, offline_after_s=5)
     fa.ingest_telemetry(telemetry(), 1.0)

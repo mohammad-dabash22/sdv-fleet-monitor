@@ -209,17 +209,34 @@ function renderLatency(s) {
   v.textContent = `${s.pass ? "Pass" : "Fail"}: p95 ${s.pass ? "<" : ">="} ${num(s.target_ms)} ms`;
 }
 
-function renderRoutes(rows) {
+// The route report (REQ-034): every number comes from the Beam pipeline's route_stats view.
+function renderRoutes(report) {
+  const rows = report.routes;
   const worst = rows.reduce((w, r) => (r.hazards_per_100km != null && (!w || r.hazards_per_100km > w.hazards_per_100km) ? r : w), null);
-  $("routes").innerHTML = rows.map((r) => `
-    <tr class="${worst && r.route_id === worst.route_id && rows.length > 1 ? "worst" : ""}">
-      <td style="--c:${routeColor(r.route_id)}"><span class="dot"></span>${esc(r.name)}</td>
-      <td>${r.trips}</td>
-      <td>${num(r.distance_km, 1)} km</td>
-      <td><b>${r.hazards_per_100km == null ? "-" : num(r.hazards_per_100km, 1)}</b></td>
-      <td>${r.avg_energy_pct == null ? "-" : `${num(r.avg_energy_pct, 2)}%`}</td>
-      <td>${r.hazard_alerts}</td>
-    </tr>`).join("");
+  const unit = (v, d, u) => (v == null ? "-" : `${num(v, d)} ${u}`);
+  if (!rows.some((r) => r.trips > 0)) {
+    $("routes").innerHTML = `<tr><td colspan="7" class="empty">No completed trip yet. A van's first full trip shows here a little after it ends.</td></tr>`;
+  } else {
+    $("routes").innerHTML = rows.map((r) => `
+      <tr class="${worst && r.route_id === worst.route_id && rows.length > 1 ? "worst" : ""}">
+        <td style="--c:${routeColor(r.route_id)}"><span class="dot"></span>${esc(r.name)}</td>
+        <td>${r.trips}</td>
+        <td>${unit(r.distance_km, 1, "km")}</td>
+        <td>${unit(r.energy_pct_per_km, 2, "%")}</td>
+        <td>${unit(r.avg_speed_kmh, 0, "km/h")}</td>
+        <td>${unit(r.stop_time_s_per_trip, 0, "s")}</td>
+        <td><b>${r.hazards_per_100km == null ? "-" : num(r.hazards_per_100km, 1)}</b></td>
+      </tr>`).join("");
+  }
+  const n = report.flagged_records;
+  $("flagged").textContent = `${n} flagged record${n === 1 ? "" : "s"}`;
+  $("flagged").className = `verdict ${n ? "fail" : ""}`;
+  const p = report.pipeline || {};
+  const updated = report.updated_ms ? `last update ${timeAgo(report.updated_ms)}` : "no results yet";
+  $("pipeline-note").textContent =
+    p.installed === false ? "Data pipeline not installed in this environment (no Apache Beam): the live map and alerts still work."
+    : p.mode === "batch" ? `Data pipeline: Pub/Sub bridge + Apache Beam, a batch every ${p.interval_s} s · ${updated}${p.last_error ? " · last run failed" : ""}.`
+    : `Data pipeline: Pub/Sub + Dataflow job (runs on demand) · ${updated}.`;
 }
 
 // ------------------------------------------------------------- refresh

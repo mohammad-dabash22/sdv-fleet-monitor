@@ -60,15 +60,19 @@
     </section>
 
     <section class="card routes-card">
-      <h2>Route performance <span class="muted">(completed trips)</span></h2>
+      <div class="card-head">
+        <h2>Route performance <span class="muted">(completed trips, from the data pipeline)</span></h2>
+        <span id="flagged" class="verdict" title="Messages that failed the quality checks: kept in quality_flags, left out of these numbers">0 flagged records</span>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Route</th><th>Trips</th><th>Distance</th><th>Hazards / 100 km</th><th>Avg battery / trip</th><th>Hazard alerts</th></tr>
+            <tr><th>Route</th><th>Trips</th><th>Distance</th><th>Energy / km</th><th>Avg speed</th><th>Stop time / trip</th><th>Hazards / 100 km</th></tr>
           </thead>
           <tbody id="routes"></tbody>
         </table>
       </div>
+      <p class="note" id="pipeline-note">Waiting for the data pipeline.</p>
     </section>
   </main>
 

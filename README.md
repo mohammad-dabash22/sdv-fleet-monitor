@@ -83,6 +83,24 @@ feature, so the detector uses the Kuksa Python SDK. The hazard rules are separat
 the Kuksa code (`vehicle/hazard_rules`), so adding Velocitas later only changes the
 detector's input and output.
 
+## V1 status (2026-11-15)
+
+V1 was built with spec-driven development: [spec](specs/fleet-monitor.md),
+[plan](specs/fleet-monitor.plan.md), [tasks](specs/fleet-monitor.tasks.md),
+[traceability](docs/traceability.md), reviews in [docs/reviews](docs/reviews/).
+
+| Feature (V1 scope) | Status | Evidence |
+|---|---|---|
+| Data quality checks (FR-10): bad telemetry rejected live, every bad message flagged | Done | 12 of 12 bad sample records flagged |
+| Route efficiency and safety (FR-12): energy/km, avg speed, stop time, hazards/100 km | Done | Route B worst: 64.5 hazards/100 km, 12.1 s stopped per trip |
+| Pub/Sub bridge + Apache Beam pipeline, laptop (Beam's local runner) | Done | [screenshot](docs/evidence/v1-laptop-route-report.jpg) |
+| Same pipeline on GCP (bridge on GKE, Dataflow job, Jenkins stages) | **Written and tested offline; not yet run on GCP** | [docs/pipeline.md](docs/pipeline.md) has the commands |
+| Delivery stops in the simulator | Done | Route B stands ~19 min per hour, A and C 3-4 |
+| Tests | 125 pass on Windows; [CI on Linux + PostgreSQL](https://github.com/mohammad-dabash22/sdv-fleet-monitor/actions/runs/43684869360) green | |
+
+**Latency with the V1 changes** (laptop, 78 hazards incl. 50 injected): median 116 ms,
+p95 149 ms, max 149 ms: **pass** (the network is the fake Zenoh; the GCP figures above are from the MVP).
+
 ---
 
 ## 1. Run the demo (Windows)

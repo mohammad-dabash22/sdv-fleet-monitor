@@ -15,8 +15,9 @@ FROM python:3.12-slim
 
 WORKDIR /srv
 
-COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# Only the vehicle set: kuksa-client cannot share an environment with the cloud set's Apache Beam (spec D-17).
+COPY requirements-vehicle.txt ./
+RUN pip install --no-cache-dir -r requirements-vehicle.txt
 
 COPY vehicle/ ./vehicle/
 COPY fakes/ ./fakes/

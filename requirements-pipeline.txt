@@ -1,0 +1,4 @@
+# The data pipeline: the Pub/Sub bridge and the Apache Beam pipeline (DirectRunner and Dataflow).
+# Pinned: without the pin, pip backtracks through old Beam releases for minutes.
+apache-beam[gcp]==2.77.0
+google-cloud-pubsub>=2.44

@@ -21,7 +21,7 @@ if not exist ".venv\Scripts\python.exe" (
     if errorlevel 1 ( pause & exit /b 1 )
 )
 
-echo Installing packages (first run can take a minute) ...
+echo Installing packages (first run takes a few minutes: Apache Beam is large) ...
 ".venv\Scripts\python.exe" -m pip install --quiet --disable-pip-version-check -r requirements.txt
 if errorlevel 1 ( pause & exit /b 1 )
 

@@ -26,7 +26,7 @@ if [ ! -x ".venv/bin/python" ]; then
     "$PY" -m venv .venv
 fi
 
-echo "Installing packages (first run can take a minute) ..."
+echo "Installing packages (first run takes a few minutes: Apache Beam is large) ..."
 .venv/bin/python -m pip install --quiet --disable-pip-version-check -r requirements.txt
 
 .venv/bin/python run_demo.py "$@"

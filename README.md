@@ -85,8 +85,11 @@ detector's input and output.
 ### Start the demo
 
 **Easy way:** double-click **`run_demo.bat`**.
-The first run creates a `.venv` folder and installs the packages (about a minute).
+The first run creates a `.venv` folder and installs the packages (a few minutes: Apache Beam is large).
 The dashboard opens in your browser at <http://127.0.0.1:8000>.
+
+If you have a `.venv` from before V1, delete it once first. It holds `kuksa-client`, which cannot share
+an environment with Apache Beam (see "Two environments" below).
 
 **Manual way** (Command Prompt, inside the project folder):
 
@@ -129,14 +132,33 @@ python3.13 -m venv .venv
 
 ### Use the real Kuksa Databroker
 
-Needs Docker. One Databroker per van (ports 55555, 55556, 55557), each loaded with
-VSS 5.1 plus our overlay `vehicle/vss/fleet_overlay.json` (`Vehicle.Fleet.*`, `Vehicle.Hazard.*`):
+Needs Docker and a second venv (see "Two environments" below). One Databroker per van
+(ports 55555, 55556, 55557), each loaded with VSS 5.1 plus our overlay
+`vehicle/vss/fleet_overlay.json` (`Vehicle.Fleet.*`, `Vehicle.Hazard.*`):
 
 ```bash
+python -m venv .venv-kuksa
+.venv-kuksa/bin/pip install -r requirements-vehicle.txt -r requirements-cloud.txt   # Windows: .venv-kuksa\Scripts\pip
 docker compose -f deploy/kuksa/docker-compose.yml up -d
-python run_demo.py --databroker kuksa --inject 50
+.venv-kuksa/bin/python run_demo.py --databroker kuksa --inject 50
 docker compose -f deploy/kuksa/docker-compose.yml down
 ```
+
+This venv has no Apache Beam, so the data pipeline does not run in it; the live map,
+alerts and latency work as usual.
+
+### Two environments
+
+`kuksa-client` 0.6.0 needs `protobuf` 7.35 or newer, and Apache Beam needs `protobuf` older
+than 7, so they cannot be installed together. The dependencies are split by half:
+
+| File | What it holds | Install it for |
+|---|---|---|
+| `requirements.txt` | `requirements-cloud.txt` + `requirements-pipeline.txt` (Apache Beam, Pub/Sub) | the default demo, the tests, the cloud image |
+| `requirements-cloud.txt` | FastAPI, uvicorn, Zenoh, PostgreSQL driver | (part of both venvs) |
+| `requirements-vehicle.txt` | `kuksa-client`, Zenoh | the vehicle image on the Ankaios VM, and the Kuksa venv above |
+
+The vehicle code and the cloud code never import each other, so nothing else changes.
 
 The vehicle apps then read and write real VSS signals in Kuksa. Zenoh and the
 database are still fakes until their own branches land.
@@ -248,6 +270,14 @@ To save credits between demos: `gcloud compute instances stop sdv-vehicles` and
 pip install -r requirements-dev.txt
 python -m pytest
 ```
+
+Run them in the default venv (`requirements-dev.txt` installs the cloud set). The tests use the
+fake Kuksa, so they never need `kuksa-client`.
+
+On Windows, `kuksa-client` also installs `pyreadline`, which is broken on Python 3.10+ and makes
+`pytest` crash before any test runs. The default venv does not have it. If you run pytest in the
+Kuksa venv, first run `pip uninstall -y pyreadline`; our code only uses `kuksa_client.grpc`,
+which works without it.
 
 The same tests run in GitHub Actions on every pull request (`.github/workflows/ci.yml`).
 `tests/test_end_to_end.py` checks the whole chain, from a hard-braking signal on a van

@@ -1,0 +1,6 @@
+# The cloud half without the pipeline: CloudService, its REST/WebSocket API and the dashboard.
+# On its own (plus requirements-vehicle.txt) this is the Kuksa-mode venv for run_demo.py --databroker kuksa.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+eclipse-zenoh==1.10.1  # vehicle-to-cloud transport; match the zenohd router version
+psycopg2-binary==2.9.13  # PostgreSQL driver for cloud/app/store.py (DATABASE_URL=postgresql://...)

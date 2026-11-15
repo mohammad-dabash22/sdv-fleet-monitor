@@ -10,7 +10,9 @@ FROM python:3.12-slim
 
 WORKDIR /srv
 
-COPY requirements.txt ./
+# The cloud set (requirements.txt includes the other two). No kuksa-client: the vans here use
+# the fake Databroker, and kuksa-client cannot share an environment with Apache Beam (spec D-17).
+COPY requirements.txt requirements-cloud.txt requirements-pipeline.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY cloud/ ./cloud/

@@ -1,0 +1,7 @@
+# The vehicle half: the apps that run on each van (simulator, hazard_detector, cloud_publisher)
+# and tools/inject_hazards.py. Installed in the vehicle image (deploy/docker/vehicle.Dockerfile).
+#
+# Kept apart from the cloud set (requirements.txt): kuksa-client 0.6.0 needs protobuf >= 7.35.1 and
+# apache-beam needs protobuf < 7, so they cannot share one environment (spec D-17, REQ-023).
+kuksa-client==0.6.0  # Kuksa Databroker client (kuksa.val.v2)
+eclipse-zenoh==1.10.1  # vehicle-to-cloud transport; match the zenohd router version

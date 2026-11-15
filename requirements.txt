@@ -1,8 +1,5 @@
-# Needed to run the mock demo.
-fastapi>=0.110
-uvicorn[standard]>=0.29
-
-# Real tools that are already wired in:
-kuksa-client==0.6.0  # Kuksa Databroker client (kuksa.val.v2)
-eclipse-zenoh==1.10.1  # vehicle-to-cloud transport; match the zenohd router version
-psycopg2-binary==2.9.13  # PostgreSQL driver for cloud/app/store.py (DATABASE_URL=postgresql://...)
+# The cloud set: everything the default laptop demo, the cloud/dashboard image and CI need.
+# The vehicle apps on the Ankaios VM use requirements-vehicle.txt instead (spec D-17, REQ-023):
+# kuksa-client and apache-beam need incompatible protobuf versions.
+-r requirements-cloud.txt
+-r requirements-pipeline.txt

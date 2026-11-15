@@ -555,7 +555,7 @@ design: Maria acknowledges them).
 
 - **Always**: write or change the spec before the code (its own commit); test first; put the REQ id in new test names; run the
   whole test suite before saying anything is done; add a row to `measurements/dev-log.csv` after each step.
-- **Ask first**: any change to the database schema beyond REQ-032; new dependencies beyond `apache-beam[gcp]` and
+- **Ask first**: any change to the database schema beyond REQ-032; new dependencies beyond `apache-beam[gcp]`, `jsonschema` (tests only, added in T03 to check the JSON Schemas) and
   `google-cloud-pubsub`; changes to existing Jenkins stages or Kubernetes Services; anything that costs GCP credits while idle.
 - **Never**: edit `docs/requirements/srs.md` or `charter.md`; put the pipeline on the live alert path; drop a hazard event; commit
   secrets or service-account keys; delete or weaken a test without a spec change that says why.

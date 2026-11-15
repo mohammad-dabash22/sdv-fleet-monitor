@@ -258,8 +258,11 @@ UI behavior is checked by hand (demo script in the README).
 
 ### Module `devops`
 
-**REQ-021 CI on GitHub Actions** · Done · FR-19, NFR-6
+**REQ-021 CI on GitHub Actions** · Done, **Changed in V1** · FR-19, NFR-6
 - AC1: Every pull request and push to `main` runs all tests on Python 3.11, with a real PostgreSQL 16 for the store tests.
+- AC2 (**V1**, T19): pushes to the work branches `v1/**` and `v2/**` run the same tests. V1 was built on a machine that could
+  not open a pull request, so without this the V1 code would never have run on Linux or against the CI PostgreSQL before
+  the merge. The job is the same; only the trigger is added.
 - Code: `.github/workflows/ci.yml` · Evidence: GitHub Actions runs on PRs #1-#10
 
 **REQ-022 CD with Jenkins on GKE** · Done · FR-18, NFR-6

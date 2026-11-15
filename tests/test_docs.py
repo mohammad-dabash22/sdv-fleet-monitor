@@ -30,6 +30,26 @@ def test_req_040_no_outdated_next_phase_notes():
     assert found == [], "\n".join(found)
 
 
+def test_req_traceability_lists_every_req():
+    """CLAUDE.md: docs/traceability.md links every spec REQ to its tests; every test it names must exist."""
+    spec = (ROOT / "specs/fleet-monitor.md").read_text(encoding="utf-8")
+    table = (ROOT / "docs/traceability.md").read_text(encoding="utf-8")
+    spec_reqs = set(re.findall(r"^\*\*(REQ-\d{3}) ", spec, re.MULTILINE))
+    rows = {m.group(1): m.group(0) for m in re.finditer(r"^\| (REQ-\d{3}) \|.*$", table, re.MULTILINE)}
+    assert spec_reqs and spec_reqs == set(rows), sorted(spec_reqs ^ set(rows))
+
+    defined = set()
+    for path in ROOT.glob("**/test_*.py"):
+        if ".venv" not in path.parts and "sdd" not in path.parts:
+            defined |= set(re.findall(r"^def (test_\w+)", path.read_text(encoding="utf-8"), re.MULTILINE))
+    named = set(re.findall(r"`(test_\w+)`", table))
+    assert named and named <= defined, sorted(named - defined)
+
+    for req_id, row in rows.items():                       # every V1 test is in its REQ's row
+        for test in (t for t in defined if t.startswith(f"test_req_{req_id[4:]}_")):
+            assert f"`{test}`" in row, (req_id, test)
+
+
 def test_req_040_dead_code_is_gone():
     detector = (ROOT / "vehicle/hazard_detector/main.py").read_text(encoding="utf-8")
     analytics = (ROOT / "cloud/app/analytics.py").read_text(encoding="utf-8")

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Approved** by the user on 2026-11-14; open questions answered the same day (D-15, D-16); dependency split added while planning (D-17) |
+| Status | **Approved** by the user on 2026-11-14; open questions answered the same day (D-15, D-16); dependency split added while planning (D-17). **V1 built 2026-11-15: see section 13.** |
 | Date | 2026-11-14 |
 | Baseline | MVP at commit `4c21d13` (branch `v1/sdd`): 34 tests pass |
 | Sources | `docs/requirements/srs.md` (SRS v1.0, `FR-x` / `NFR-x`), `docs/requirements/charter.md` (Charter v2), `README.md`, the code |
@@ -269,7 +269,7 @@ UI behavior is checked by hand (demo script in the README).
 - Note: the Jenkins test stage has no PostgreSQL, so the PostgreSQL store tests only run in GitHub Actions.
 - Code: `Jenkinsfile`, `cloudbuild.yaml`, `deploy/k8s/*`, `deploy/jenkins/values.yaml`, `deploy/cicd-db/*` · Evidence: Jenkins build history, `deployments` table
 
-**REQ-023 Containers and dependencies** · Done, **Changed in V1** · NFR-4 · D-17
+**REQ-023 Containers and dependencies** · **Partial** after V1 (images not built yet), **Changed in V1** · NFR-4 · D-17
 - AC1: Databroker, vehicle apps and dashboard/cloud each have a Dockerfile; the vehicle image runs any vehicle app by its command.
 - AC2 (**V1**): the dependencies are split by half, because `apache-beam` and `kuksa-client` need incompatible `protobuf` versions:
 
@@ -313,7 +313,7 @@ next to the `validate()` function it uses.
 
 ### Module `pipeline`
 
-**REQ-027 Pub/Sub bridge** · New in V1 · FR-8, rubric "Data platform" · D-1, D-7
+**REQ-027 Pub/Sub bridge** · New in V1 → **Partial** · FR-8, rubric "Data platform" · D-1, D-7
 A small cloud service copies every raw vehicle message from Zenoh to Pub/Sub. It does not touch the live path.
 - AC1: It subscribes to `fleet/*/telemetry` and `fleet/*/hazards` and publishes each payload **unchanged** to topic
   `fleet-telemetry` or `fleet-hazards`, with attributes `vehicle_id` and `kind`.
@@ -323,7 +323,7 @@ A small cloud service copies every raw vehicle message from Zenoh to Pub/Sub. It
 - AC4: On GKE it runs as an extra container in the `sdv-cloud` pod (same image), next to the Zenoh router.
 - Code (planned): `cloud/pipeline/bridge.py`, `cloud/pipeline/pubsub.py`, `fakes/pubsub.py`
 
-**REQ-028 Shared quality check `validate()`** · New in V1 · FR-10, NFR-2 · D-6
+**REQ-028 Shared quality check `validate()`** · New in V1 → **Done** · FR-10, NFR-2 · D-6
 One pure function (no I/O, no Beam) decides whether a message is valid. Both CloudService and Beam use it, so the rules exist once.
 - AC1: `validate(message, kind, known_vehicles, arrival_ms)` returns a list of problems; an empty list means valid.
 - AC2: Problem codes and rules:
@@ -340,7 +340,7 @@ One pure function (no I/O, no Beam) decides whether a message is valid. Both Clo
 - AC3: Every rule in the table has a passing and a failing test case.
 - Code (planned): `cloud/quality.py`
 
-**REQ-029 The live path rejects invalid telemetry** · New in V1 · FR-10, NFR-2 · D-6
+**REQ-029 The live path rejects invalid telemetry** · New in V1 → **Done** · FR-10, NFR-2 · D-6
 - AC1: Telemetry with any problem from `validate()` does not update the twin, the map or the `telemetry` table.
 - AC2: **Hazard events are never rejected** on the live path: a hazard with a problem still becomes an alert (safety first);
   Beam flags it (REQ-030).
@@ -348,7 +348,7 @@ One pure function (no I/O, no Beam) decides whether a message is valid. Both Clo
 - AC4: The existing tests in REQ-009, REQ-011 and REQ-024 still pass.
 - Code: `cloud/app/analytics.py` or `cloud/app/main.py`
 
-**REQ-030 Beam: quality flags** · New in V1 · FR-10, NFR-2 · D-4
+**REQ-030 Beam: quality flags** · New in V1 → **Done** · FR-10, NFR-2 · D-4
 - AC1: The Beam pipeline runs `validate()` on every message it reads. Invalid messages go to `quality_flags` (vehicle, route if
   known, kind, problem codes, the raw payload, the time it was processed) and are left out of all statistics.
 - AC2: Replaying the sample file (REQ-036) gives exactly one `quality_flags` row per bad record, with the expected codes, and none for good records.
@@ -356,7 +356,7 @@ One pure function (no I/O, no Beam) decides whether a message is valid. Both Clo
   there is no message to check; the live path ignores it (REQ-009 AC2), so this flag is the only trace it leaves (NFR-2).
 - Code (planned): `cloud/pipeline/transforms.py`
 
-**REQ-031 Beam: trip and route efficiency and safety** · New in V1 · FR-12, charter "Route efficiency and safety" · D-4, D-5
+**REQ-031 Beam: trip and route efficiency and safety** · New in V1 → **Done** · FR-12, charter "Route efficiency and safety" · D-4, D-5
 From valid telemetry and hazard events, Beam computes per completed trip and per route:
 
 | Metric | Per trip | Per route (over its completed trips) |
@@ -375,7 +375,7 @@ From valid telemetry and hazard events, Beam computes per completed trip and per
   and the most stop time (charter scenario step 5).
 - Code (planned): `cloud/pipeline/transforms.py`
 
-**REQ-032 Pipeline tables** · New in V1 · FR-9 · D-2
+**REQ-032 Pipeline tables** · New in V1 → **Partial** · FR-9 · D-2
 - AC1: Tables `trip_stats` and `quality_flags`, and a view `route_stats` that sums `trip_stats` per route, exist in both schema
   files (`cloud/db/schema.*.sql`) with the same columns, created idempotently. Route numbers are pure sums and ratios of trip
   numbers, so a view keeps one source (D-5) and cannot double-count.
@@ -386,7 +386,7 @@ From valid telemetry and hazard events, Beam computes per completed trip and per
   existing `ClusterIP` Service stays.
 - Code: `cloud/db/schema.sqlite.sql`, `cloud/db/schema.postgres.sql`, `cloud/app/store.py`, `deploy/k8s/fleet-db.yaml`
 
-**REQ-033 Runners** · New in V1 · rubric "Dataflow / Apache Beam" · D-3, D-5
+**REQ-033 Runners** · New in V1 → **Partial** · rubric "Dataflow / Apache Beam" · D-3, D-5
 The pipeline is one composite Beam transform; only its input and runner change.
 - AC1: **Tests and CI**: the transforms run on the DirectRunner with in-memory input (`TestPipeline` + `Create`), with no GCP access.
   Batch runs use the DirectRunner's in-process engine, `FnApiRunner`, by name: in Beam 2.77 a plain `DirectRunner` first tries the
@@ -398,7 +398,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC4: If the pipeline is not running, the live dashboard still works; the route report shows the last results.
 - Code (planned): `cloud/pipeline/run.py`, `run_demo.py`
 
-**REQ-036 Sample data and replay** · New in V1 · FR-10, rubric "Reproducible input data" · D-9
+**REQ-036 Sample data and replay** · New in V1 → **Partial** · FR-10, rubric "Reproducible input data" · D-9
 - AC1: `data/samples/telemetry.jsonl` holds about 20 good telemetry records, a few hazard events, and at least 10 bad records
   covering every problem code in REQ-028.
 - AC2: `python -m tools.replay_samples` publishes the file to the Zenoh telemetry and hazard keys, so the **whole system** sees it:
@@ -412,7 +412,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC4: The Beam tests read the same file.
 - Code (planned): `data/samples/telemetry.jsonl`, `tools/replay_samples.py`
 
-**REQ-041 Pipeline documentation** · New in V1 · rubric "Pipeline diagram, schemas and contracts, deployment instructions"
+**REQ-041 Pipeline documentation** · New in V1 → **Done** · rubric "Pipeline diagram, schemas and contracts, deployment instructions"
 - AC1: `docs/pipeline.md` has the pipeline diagram, links to the JSON Schemas (REQ-007 AC3) and the table definitions, and the
   exact commands to create the topics, start and drain the Dataflow job, and replay the samples.
 - AC2: The README links to it and its "How it works" section shows the pipeline.
@@ -420,7 +420,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 
 ### Module `dashboard`
 
-**REQ-034 Route report** · New in V1 · FR-12, FR-16, NFR-3, charter scenario step 5 · D-5
+**REQ-034 Route report** · New in V1 → **Done** · FR-12, FR-16, NFR-3, charter scenario step 5 · D-5
 - AC1: `/api/routes` reads `route_stats`; `/api/trips` reads `trip_stats`.
 - AC2: The Route performance panel shows per route: completed trips, distance, energy % per km, average speed, stop time per trip,
   hazards per 100 km; the worst route on hazards per 100 km is highlighted.
@@ -431,7 +431,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 
 ### Module `vehicle`
 
-**REQ-035 Delivery stops** · New in V1 · FR-1, FR-12 · D-8
+**REQ-035 Delivery stops** · New in V1 → **Done** · FR-1, FR-12 · D-8
 - AC1: Each route profile has a stop chance and a stop length; Route B (downtown) stops most often and longest.
 - AC2: When stopping, the van slows at its normal rate (no harsh-braking hazard from a stop), waits at 0 km/h, then drives on.
 - AC3: The stops are repeatable with `--seed`.
@@ -441,7 +441,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 
 ### Module `cloud-live`
 
-**REQ-038 Health reflects the database** · New in V1 · NFR-6 · D-11
+**REQ-038 Health reflects the database** · New in V1 → **Done** · NFR-6 · D-11
 - AC1: `/api/health` runs `SELECT 1`; when the database does not answer, it returns HTTP 503 with the reason.
 - AC2: `deploy/k8s/cloud.yaml` has a `livenessProbe` on `/api/health`, so Kubernetes restarts the pod and it reconnects on start.
 - Note: no reconnect logic or connection pool is added.
@@ -449,7 +449,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 
 ### Module `devops`
 
-**REQ-037 Pipeline deployment** · New in V1 · FR-18, NFR-6 · D-7
+**REQ-037 Pipeline deployment** · New in V1 → **Partial** · FR-18, NFR-6 · D-7
 - AC1: On every merge to `main`, new Jenkins steps create the Pub/Sub topics and subscriptions if missing, apply the internal
   load balancer for `fleet-db`, and roll out the bridge with `sdv-cloud`. The existing stages and their order stay.
 - AC2: `python -m tools.dataflow_job start` and `... drain` start and drain the streaming Dataflow job; they are idempotent
@@ -465,7 +465,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC4: The one manual setup step is documented: give the `sdv-cloud` pod permission to publish to Pub/Sub, and give Dataflow access to the database secret.
 - Code: `Jenkinsfile`, `deploy/k8s/cloud.yaml`, `deploy/k8s/fleet-db.yaml`, `tools/dataflow_job.py`
 
-**REQ-039 Tests run on Windows** · New in V1 · NFR-4 · D-10, D-17
+**REQ-039 Tests run on Windows** · New in V1 → **Done** · NFR-4 · D-10, D-17
 - AC1: With the split (REQ-023), the default venv has no `kuksa-client` and therefore no `pyreadline`, so `python -m pytest`
   works on Windows with no extra step. The README notes `pip uninstall -y pyreadline` only for the Kuksa venv (installed by
   `kuksa-client`, broken on Python 3.10+, and imported by pytest at start-up).
@@ -473,7 +473,7 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC3: After the step, `python -m pytest` runs on Windows.
 - Code: `README.md`
 
-**REQ-040 Docstrings match the code** · New in V1 · NFR-4 · D-12
+**REQ-040 Docstrings match the code** · New in V1 → **Done** · NFR-4 · D-12
 - AC1: No comment or docstring says something that is done is "next phase" or "fake today" (25 places in 18 files at baseline).
   Notes that are still true (Velocitas, Phase 2 / V2 work) stay.
 - AC2: Unused code is removed: `Detector.stop()`, `FleetAnalytics.costs`.
@@ -593,3 +593,16 @@ None. Both were answered by the user on 2026-11-14:
 
 1. ~~Why does Jenkins deploy instead of GitHub Actions?~~ To apply what was learned in the labs and assignments (D-15, DV-3).
 2. ~~Dataflow budget?~~ 1 worker, the smallest machine type, only for demos and measurements, drained right after (D-16, REQ-037 AC2a).
+
+## 13. V1 result (2026-11-15)
+
+All 19 tasks were worked through test-first (`specs/fleet-monitor.tasks.md`); the full suite has 124 tests. The status of every REQ,
+with its tests and evidence, is in [`docs/traceability.md`](../docs/traceability.md): **30 Done, 9 Partial, 2 Replaced**.
+
+- **Partial because of GCP access (REQ-023, 027, 032, 033, 036, 037).** The code, manifests, Jenkins stages and the Dataflow script
+  are written and tested offline, but the GCP project the deployment runs in could not be reached from the machine V1 was built on,
+  so the images, the bridge on GKE, the internal load balancer, the Jenkins stages and a real Dataflow run have not run. This is
+  the plan's cut line: marked Partial, not dropped. `docs/pipeline.md` has the exact commands for the one-time setup and the run.
+- **Partial from the MVP, unchanged (REQ-008, 013, 024):** see DV-7, DV-8 and the REQ-013 gap (FR-11 is V2).
+- **Not merged to `main` yet.** The merge (T13) needs a pull request, and a merge deploys through Jenkins to the project that could
+  not be reached, so it was left for someone who can open the PR and watch the deploy. Branch: `v1/sdd`.

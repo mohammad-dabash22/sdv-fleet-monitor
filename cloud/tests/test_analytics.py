@@ -50,6 +50,30 @@ def test_trip_result_after_first_full_trip():
     assert trip["energy_used_pct"] == 3.0
 
 
+def test_req_029_invalid_telemetry_does_not_update_twin():
+    fa = FleetAnalytics(FLEET)
+    fa.ingest_telemetry(telemetry(), 10.0)
+    bad = {**telemetry(), "speed_kmh": -40}
+    assert fa.ingest_telemetry(bad, 11.0) == []          # no telemetry event = nothing is stored
+    assert fa.twins["veh-02"].telemetry["speed_kmh"] == 40
+
+
+def test_req_029_hazard_with_problem_still_alerts():
+    fa = FleetAnalytics(FLEET)
+    events = fa.ingest_hazard({"vehicle_id": "veh-02", "route_id": "B", "type": "TRACTION_LOSS", "severity": 3,
+                               "detail": "x", "lat": None, "lon": None, "t0_ms": 10_000}, 10.25)
+    assert events[0]["kind"] == "alert" and events[0]["data"]["type"] == "TRACTION_LOSS"
+
+
+def test_req_029_partial_message_then_full_message():
+    fa = FleetAnalytics(FLEET)
+    partial = {**telemetry(), "lat": None, "lon": None, "soc_pct": None}   # a publisher that just started
+    assert fa.ingest_telemetry(partial, 1.0) == []
+    assert not fa.twins["veh-02"].online
+    assert "twin" in kinds(fa.ingest_telemetry(telemetry(), 2.0))
+    assert fa.twins["veh-02"].online
+
+
 def test_offline_then_back_online():
     fa = FleetAnalytics(FLEET, offline_after_s=5)
     fa.ingest_telemetry(telemetry(), 1.0)

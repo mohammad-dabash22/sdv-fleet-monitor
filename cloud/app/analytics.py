@@ -21,6 +21,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from cloud.quality import validate
+
 ENERGY_DROP_PCT = 3.0       # one sample dropping more than this is suspicious
 
 
@@ -79,8 +81,9 @@ class FleetAnalytics:
         twin = self.twins.get(msg.get("vehicle_id", ""))
         if twin is None:
             return []  # unknown vehicle: discard (activity diagram, first decision)
+        if validate(msg, "telemetry", self.vehicles, int(now * 1000)):
+            return []  # invalid: not stored, twin unchanged; the pipeline flags it (REQ-029)
 
-        # Phase 2: data quality checks go here (missing, out of range, late).
         events: list[dict] = [{"kind": "telemetry", "data": msg}]
         if not twin.online:
             events.append({"kind": "clear", "vehicle_id": twin.vehicle_id, "source": "cloud", "type": "OFFLINE"})

@@ -119,10 +119,12 @@ class CloudService:
 
 
 def _decode(sample: Any) -> dict | None:
+    """The message as a dict, or None if it is not a JSON object (such messages are ignored, REQ-009)."""
     try:
-        return json.loads(sample.payload.to_string())
+        msg = json.loads(sample.payload.to_string())
     except (ValueError, AttributeError):
         return None
+    return msg if isinstance(msg, dict) else None
 
 
 def load_fleet(path: str) -> dict:

@@ -40,6 +40,36 @@ def test_req_038_health_ok_when_database_answers():
         assert res.json()["status"] == "ok" and res.json()["database"] == "sqlite"
 
 
+def now_ms():
+    return int(time.time() * 1000)
+
+
+def test_req_029_invalid_telemetry_is_not_stored():
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        bus = fake_zenoh.open()
+        good = {"vehicle_id": "veh-01", "route_id": "A", "trip_id": 1, "ts_ms": now_ms(), "speed_kmh": 33,
+                "lat": 43.9, "lon": -78.9, "soc_pct": 80, "engine_on": True, "odometer_km": 10}
+        bus.put("fleet/veh-01/telemetry", json.dumps({**good, "speed_kmh": -40}))
+        bus.put("fleet/veh-01/telemetry", json.dumps({**good, "ts_ms": now_ms() + 1}))
+        assert wait_for(lambda: len(client.get("/api/history/veh-01").json()) >= 1)
+        time.sleep(0.1)
+        rows = client.get("/api/history/veh-01").json()
+        assert [r["speed_kmh"] for r in rows] == [33]
+
+
+def test_req_009_malformed_json_is_ignored(capfd):
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        bus = fake_zenoh.open()
+        bus.put("fleet/veh-02/hazards", "not json")
+        bus.put("fleet/veh-02/hazards", "[1, 2]")             # valid JSON, but not an object
+        event = {"vehicle_id": "veh-02", "route_id": "B", "type": "TRACTION_LOSS", "severity": 3,
+                 "detail": "TCS", "lat": 43.9, "lon": -78.8, "t0_ms": now_ms()}
+        bus.put("fleet/veh-02/hazards", json.dumps(event))
+        assert wait_for(lambda: client.get("/api/alerts").json()["active"] == 1)
+    # The fake bus catches handler crashes and prints them; real Zenoh may not, so none is allowed.
+    assert "handler error" not in capfd.readouterr().out
+
+
 def test_hazard_flows_to_alerts_and_can_be_acked():
     with TestClient(create_app(CloudConfig(transport="fake"))) as client:
         bus = fake_zenoh.open()
@@ -60,7 +90,8 @@ def test_websocket_sends_snapshot_then_live_twin():
         with client.websocket_connect("/ws") as ws:
             first = ws.receive_json()
             assert first["kind"] == "snapshot" and len(first["fleet"]) == 3
-            msg = {"vehicle_id": "veh-01", "route_id": "A", "trip_id": 1, "ts_ms": 1, "speed_kmh": 33,
+            # ts_ms must be recent: since REQ-029 a 1970 timestamp is LATE and rejected.
+            msg = {"vehicle_id": "veh-01", "route_id": "A", "trip_id": 1, "ts_ms": now_ms(), "speed_kmh": 33,
                    "lat": 43.9, "lon": -78.9, "soc_pct": 80, "engine_on": True, "odometer_km": 10}
             fake_zenoh.open().put("fleet/veh-01/telemetry", json.dumps(msg))
             ev = ws.receive_json()

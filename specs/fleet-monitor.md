@@ -457,6 +457,10 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC2a (D-16): by default the job runs with exactly 1 worker (no autoscaling above 1) on the smallest machine type Dataflow
   accepts for a streaming job. It is started only for a demo or a measurement and drained right after; `docs/pipeline.md`
   says so next to the start command.
+- AC2b (T15, plan risk R5): the default machine type is `e2-medium`. Dataflow accepts the shared-core types e2-micro, e2-small
+  and e2-medium for Streaming Engine jobs but does not recommend them or cover them by its SLA; e2-micro and e2-small have
+  1-2 GB of memory, too little for the Beam Python SDK harness, so e2-medium (4 GB) is the smallest realistic type. If a job
+  fails on it, `--machine-type e2-standard-2` (the Streaming Engine default, 2 vCPUs) is the fallback.
 - AC3: The Jenkins test stage also runs the pipeline tests (DirectRunner).
 - AC4: The one manual setup step is documented: give the `sdv-cloud` pod permission to publish to Pub/Sub, and give Dataflow access to the database secret.
 - Code: `Jenkinsfile`, `deploy/k8s/cloud.yaml`, `deploy/k8s/fleet-db.yaml`, `tools/dataflow_job.py`

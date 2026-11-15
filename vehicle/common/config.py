@@ -1,8 +1,8 @@
 """Vehicle app configuration.
 
 In the demo, run_demo.py builds one VehicleConfig per van in code.
-NEXT PHASE: each app runs in its own container, started by Ankaios, and
-reads the same values from environment variables with VehicleConfig.from_env().
+Under Ankaios each app runs in its own container and reads the same values from
+environment variables with VehicleConfig.from_env().
 """
 
 from __future__ import annotations

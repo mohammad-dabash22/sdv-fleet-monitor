@@ -1,4 +1,4 @@
-"""Cloud domain logic: digital twins, trips, cloud-side alerts. No I/O at all.
+"""Cloud domain logic: digital twins and cloud-side alerts. No I/O at all.
 
 FleetAnalytics takes messages in and returns a list of EVENTS out. It never
 writes to the database or the network; CloudService (main.py) does that.
@@ -10,9 +10,9 @@ Event kinds returned:
     {"kind": "alert",     "data": alert}     store + push a new alert
     {"kind": "clear",     "vehicle_id", "source", "type"}   auto-resolve old alerts
 
-NEXT PHASE (Phase 2): add the data quality checks (FR-10) at the start of
-ingest_telemetry, anomaly detection (FR-11) and route cost/profit (FR-12)
-using self.costs. Keep the "no I/O" rule.
+Telemetry that fails the quality checks (cloud/quality.py) is rejected here (REQ-029).
+Trip and route numbers are not computed here: the Beam pipeline owns them (cloud/pipeline,
+spec D-5). More anomaly detection (FR-11) is V2.
 """
 
 from __future__ import annotations
@@ -56,7 +56,6 @@ class FleetAnalytics:
     def __init__(self, fleet: dict, offline_after_s: float = 10.0) -> None:
         self.routes: dict[str, dict] = fleet.get("routes", {})
         self.vehicles: dict[str, dict] = {v["vehicle_id"]: v for v in fleet.get("vehicles", [])}
-        self.costs: dict[str, Any] = fleet.get("costs", {})  # Phase 2: route economics
         self.offline_after_s = offline_after_s
         self.twins: dict[str, Twin] = {
             vid: Twin(vid, v["name"], v.get("powertrain", ""), v["route_id"],

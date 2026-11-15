@@ -10,10 +10,11 @@ What runs (same parts as the real design; fakes unless a flag picks the real too
     per van (x3):  simulator  ->  Databroker (fake, or Kuksa)  ->  hazard_detector
                                                   ->  cloud_publisher  ->  fake Zenoh
     cloud:         fake Zenoh  ->  CloudService  ->  SQLite (in memory)  +  WebSocket  ->  dashboard
+    pipeline:      fake Zenoh  ->  bridge  ->  fake Pub/Sub  ->  Beam batch every 30 s  ->  same SQLite
 
-NEXT PHASE: this file is only for the mock demo. With the real tools, Ankaios
-starts the vehicle apps (vehicle/*/main.py) in containers on the vehicle VM,
-and the cloud runs with `python -m cloud.app.main` (or Docker) on the cloud VM.
+This file is only for the one-process demo. On GCP, Ankaios starts the vehicle apps
+(vehicle/*/main.py) in containers on the vehicle VM, and the cloud runs on GKE
+(deploy/k8s/cloud.yaml); see README, "Everything real on GCP".
 """
 
 from __future__ import annotations

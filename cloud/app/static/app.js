@@ -1,12 +1,11 @@
 // SDV Fleet Monitor dashboard (plain JavaScript, no build step).
 //
 // Data comes from the cloud service only:
-//   WebSocket /ws          live events: snapshot, twin, alert, alerts_changed, trip
+//   WebSocket /ws          live events: snapshot, twin, alert, alerts_changed
 //   GET /api/alerts        alert queue          POST /api/alerts/{id}/ack
-//   GET /api/latency       latency stats        GET /api/routes   route table
+//   GET /api/latency       latency stats        GET /api/routes   route report (from the Beam pipeline)
 //
-// NEXT PHASE: nothing here depends on mock data. Phase 2 adds fleet history
-// (GET /api/history/{vehicle_id}) and more route columns.
+// Nothing here depends on mock data. Fleet history (GET /api/history/{vehicle_id}) on the dashboard is V2.
 
 "use strict";
 

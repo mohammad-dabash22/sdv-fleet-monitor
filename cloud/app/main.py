@@ -4,11 +4,10 @@
                  -> handle(events): Store saves them, broadcaster pushes them
                     to every dashboard over the WebSocket
 
-Run the cloud on its own (next phase):
-    python -m cloud.app.main
+Run the cloud on its own (on GKE, deploy/k8s/cloud.yaml):
+    TRANSPORT=zenoh DATABASE_URL=postgresql://... python -m cloud.app.main
 
-NEXT PHASE: nothing here should change. Set TRANSPORT=zenoh and
-DATABASE_URL=postgresql://... (see transport.py and store.py).
+The route report (/api/routes, /api/trips) reads the tables the Beam pipeline writes (REQ-034).
 """
 
 from __future__ import annotations

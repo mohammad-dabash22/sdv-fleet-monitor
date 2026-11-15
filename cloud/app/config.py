@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 class CloudConfig:
     transport: str = "fake"                     # fake | zenoh
     zenoh_endpoint: str = "tcp/127.0.0.1:7447"
-    # Today: SQLite in memory (stand-in for PostgreSQL, nothing to install).
-    # NEXT PHASE: postgresql://user:password@host:5432/fleet
+    # SQLite in memory for the demo and tests (nothing to install);
+    # on GKE: postgresql://user:password@host:5432/fleet (deploy/k8s/cloud.yaml)
     database_url: str = "sqlite:///:memory:"
     fleet_config: str = str(ROOT / "config" / "fleet.json")
     offline_after_s: float = 10.0

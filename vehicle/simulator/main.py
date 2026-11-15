@@ -1,15 +1,14 @@
 """Vehicle simulator: drives one van around its route and writes VSS signals.
 
-It writes into the vehicle's Databroker (fake today, Kuksa next phase), like
+It writes into the vehicle's Databroker (the fake one, or Kuksa), like
 a real vehicle's sensors would. It does NOT detect hazards; it only creates
 the physical situations (hard braking, wheel slip, speeding) that the
 HazardDetector must find.
 
-Run one van on its own (next phase, inside a container):
-    python -m vehicle.simulator.main
+Run one van on its own (Ankaios does this in a container on the vehicle VM):
+    DATABROKER=kuksa python -m vehicle.simulator.main
 
-NEXT PHASE: nothing has to change here except, optionally, the VSS paths in
-vehicle/common/vss.py and the driving model below.
+Delivery stops (REQ-035) make the van stand still now and then, Route B most.
 """
 
 from __future__ import annotations

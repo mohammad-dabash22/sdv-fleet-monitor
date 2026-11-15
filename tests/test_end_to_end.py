@@ -4,8 +4,7 @@ A hard-braking value is written into the van's Databroker. The test checks
 that the full chain (detector -> publisher -> transport -> cloud -> store)
 produces an alert, tagged with route and location, in under 2 seconds.
 
-NEXT PHASE: keep this test (it stays fast). Add a second CI job that runs
-the same check against real Kuksa + Zenoh containers.
+It uses the fake Kuksa and Zenoh; the real chain is checked by hand on GCP (spec REQ-024, DV-7).
 """
 
 import threading

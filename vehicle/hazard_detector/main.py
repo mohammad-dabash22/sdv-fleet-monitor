@@ -6,12 +6,12 @@ Flow (see the UML sequence diagram):
 
 A short hold window (HOLD_S) stops a hazard from flickering on and off.
 
-Run one detector on its own (next phase, inside a container):
-    python -m vehicle.hazard_detector.main
+Run one detector on its own (Ankaios does this in a container on the vehicle VM):
+    DATABROKER=kuksa python -m vehicle.hazard_detector.main
 
-NEXT PHASE: wrap this class in a Velocitas VehicleApp (the charter says the
-detector is a Velocitas app). The rules (vehicle/hazard_rules) and this class
-stay the same; Velocitas only replaces how we subscribe and write signals.
+Velocitas is deferred (spec DV-1, D-14): the charter wants this to be a Velocitas app. If it
+comes back, the rules (vehicle/hazard_rules) and this class stay the same; Velocitas only
+replaces how we subscribe and write signals.
 """
 
 from __future__ import annotations
@@ -102,9 +102,6 @@ class Detector:
             vss.HAZARD_LIGHTS: D(False),
         })
         self.current = None
-
-    def stop(self, client: Any) -> None:
-        client.disconnect()
 
 
 def thresholds_for(cfg: VehicleConfig) -> Thresholds:

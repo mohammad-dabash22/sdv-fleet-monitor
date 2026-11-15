@@ -1,4 +1,4 @@
--- Used TODAY by the mock (SQLite in memory, stand-in for PostgreSQL).
+-- Used by the demo and the tests (SQLite in memory); GKE uses schema.postgres.sql.
 -- Keep it in step with schema.postgres.sql: same tables, same columns.
 
 CREATE TABLE IF NOT EXISTS telemetry (

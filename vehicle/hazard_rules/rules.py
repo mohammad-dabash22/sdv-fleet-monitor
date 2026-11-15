@@ -8,8 +8,7 @@ names (the Detector maps VSS paths to these names):
 This module depends on nothing, so it is easy to unit test and does not
 change when the real Databroker arrives.
 
-NEXT PHASE: tune the default thresholds with the team, and add rules here
-(each rule is one small function that returns a Finding or None).
+To add a rule: write one small function that returns a Finding or None, and add it to RULES.
 """
 
 from __future__ import annotations

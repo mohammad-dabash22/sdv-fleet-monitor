@@ -3,8 +3,7 @@
 Each route is a closed loop that starts and ends at the depot. One loop is
 one trip. The points are approximate; they only need to look right on a map.
 
-NEXT PHASE (optional): replace the points with real road geometry, or replay
-recorded drives instead of generating them.
+Real road geometry, or replaying recorded drives, would be a V2 option.
 """
 
 from __future__ import annotations

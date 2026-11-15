@@ -9,7 +9,7 @@
 # --enable-databroker-v1 also serves the older sdv.databroker.v1 API that the
 # Velocitas SDK uses; kuksa-client uses kuksa.val.v2, which is always on.
 #
-# NEXT PHASE: Ankaios starts these brokers (deploy/ankaios/state.yaml) instead.
+# On the vehicle VM, Ankaios starts these brokers instead (deploy/ankaios/state.yaml).
 
 x-databroker: &databroker
   image: ghcr.io/eclipse-kuksa/kuksa-databroker:0.6.0

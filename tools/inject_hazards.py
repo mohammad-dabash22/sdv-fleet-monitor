@@ -4,10 +4,10 @@ It writes a hard-braking value into each van's Databroker, round-robin. The
 normal pipeline then detects it (t0), sends it, and the cloud records the
 arrival (t1). The dashboard "Latency" panel shows median, p95 and max.
 
-Today: run_demo.py calls inject() with the fake Databroker clients:
+In the demo, run_demo.py calls inject() with the fake Databroker clients:
     python run_demo.py --inject 50
 
-NEXT PHASE: run it on its own against the real Kuksa Databrokers:
+Against the real Kuksa Databrokers (on the vehicle VM, see README):
     python -m tools.inject_hazards --host <vehicle-vm-ip> --ports 55555,55556,55557 --count 50
 """
 

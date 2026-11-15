@@ -1,6 +1,5 @@
 # CI: run all tests on every pull request and on every push to main.
-# NEXT PHASE: add jobs to build the Docker images, push them to Artifact
-# Registry, and deploy to the VMs (FR-18), after this test job passes.
+# Building the images and deploying are done by Jenkins (Jenkinsfile, spec DV-3).
 name: CI
 
 on:

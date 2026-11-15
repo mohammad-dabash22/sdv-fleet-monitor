@@ -1,12 +1,10 @@
-"""Open the cloud's Zenoh session (fake today, real Zenoh next phase).
+"""Open the cloud's Zenoh session: the fake one, or real Zenoh (TRANSPORT=fake | zenoh).
 
 This is the ONLY cloud file that knows whether the transport is fake.
 The cloud never imports vehicle code: the keys below and the JSON shape are
 the whole contract between the two halves.
 
-NEXT PHASE:
-    pip install eclipse-zenoh
-    set TRANSPORT=zenoh and ZENOH_ENDPOINT=tcp/<router-ip>:7447
+Real Zenoh: TRANSPORT=zenoh and ZENOH_ENDPOINT=tcp/<router-ip>:7447 (on GKE, the router in the same pod).
 """
 
 from __future__ import annotations

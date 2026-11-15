@@ -1,11 +1,9 @@
-"""Open the vehicle-to-cloud session (fake today, Zenoh next phase).
+"""Open the vehicle-to-cloud session: the fake one, or real Zenoh (TRANSPORT=fake | zenoh).
 
 The two Zenoh keys below, plus the JSON shape of the messages, are the ONLY
 link between the vehicle half and the cloud half (see the UML package diagram).
 
-NEXT PHASE:
-    pip install eclipse-zenoh
-    set TRANSPORT=zenoh and ZENOH_ENDPOINT=tcp/<router-ip>:7447
+Real Zenoh: TRANSPORT=zenoh and ZENOH_ENDPOINT=tcp/<router-ip>:7447 (the router on GKE).
 """
 
 from __future__ import annotations

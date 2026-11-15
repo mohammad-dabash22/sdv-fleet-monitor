@@ -29,12 +29,25 @@ Ahmad Musleh, Giancarlo Sotelo Lajo, Mohammad Dabash.
 4. In the cloud, the **cloud service** receives it (**t1**), stores it in **PostgreSQL**
    and pushes it to the **dashboard**. Latency = t1 - t0.
 
+**The data pipeline (V1), next to the live path:**
+
+5. A **bridge** copies every raw message from Zenoh to **Google Pub/Sub**.
+6. An **Apache Beam** pipeline (Dataflow on GCP, Beam's local runner on a laptop) checks each
+   message's quality, flags the bad ones, and computes each route's efficiency and safety per
+   trip: energy per km, average speed, stop time and hazards per 100 km.
+7. The results land in the same PostgreSQL, and the dashboard's **Route performance** panel shows
+   them, with the number of flagged records. Details: [docs/pipeline.md](docs/pipeline.md).
+
+The cloud service also rejects bad telemetry itself (same rules, `cloud/quality.py`), so a
+broken message never moves a van on the map; a hazard alert is never rejected.
+
 **Who keeps it running:**
 
 | Part | Runs on | Managed by |
 |---|---|---|
 | Kuksa, simulator, hazard detector, cloud publisher (x3 vans) | GCP VM `sdv-vehicles` | **Eclipse Ankaios**: starts them, restarts any that stop |
-| Zenoh router, cloud service, PostgreSQL, dashboards | GKE | **Kubernetes** |
+| Zenoh router, cloud service, Pub/Sub bridge, PostgreSQL, dashboards | GKE | **Kubernetes** |
+| Beam pipeline (streaming) | Dataflow, 1 worker, only for demos and measurements | `python -m tools.dataflow_job start` / `drain` |
 | New code on `main` | GitHub to GKE | **Jenkins**: test, build, deploy (checks GitHub every 2 minutes) |
 
 ## Phase 1 status
@@ -111,6 +124,7 @@ Stop with **Ctrl+C**.
 | `python run_demo.py --port 8080` | use another port |
 | `python run_demo.py --time-scale 25` | vans move faster, so trips finish sooner |
 | `python run_demo.py --seed 7` | a different (but repeatable) demo |
+| `python run_demo.py --replay-samples` | after 15 s, replays the 12 bad records of `data/samples/telemetry.jsonl` (see the flagged records) |
 | `python run_demo.py --no-browser` | do not open the browser |
 | `python run_demo.py --databroker kuksa` | use the real Kuksa Databrokers (see below) |
 
@@ -160,8 +174,8 @@ than 7, so they cannot be installed together. The dependencies are split by half
 
 The vehicle code and the cloud code never import each other, so nothing else changes.
 
-The vehicle apps then read and write real VSS signals in Kuksa. Zenoh and the
-database are still fakes until their own branches land.
+The vehicle apps then read and write real VSS signals in Kuksa. In this one-process
+demo Zenoh and the database stay fakes; the GCP setup below uses the real ones.
 
 ### Run the vans with Eclipse Ankaios (Linux)
 
@@ -248,17 +262,20 @@ To save credits between demos: `gcloud compute instances stop sdv-vehicles` and
 - **Alerts:** new hazards appear at the top with their latency. Click **Acknowledge**.
   Tick **Show resolved** to see old alerts.
 - **Hazard latency:** median, 95th percentile and max of t1 - t0 (target: p95 under 2 s).
-- **Route performance:** filled in after the first full trip of each van (about 2 minutes).
-  Route B (downtown) should have the most hazards per 100 km.
+- **Route performance:** filled in by the data pipeline a little after each van's second trip
+  (about 3 minutes): energy per km, average speed, stop time and hazards per 100 km. Route B
+  (downtown) has the most hazards per 100 km and the most stop time. The badge counts the
+  messages that failed the quality checks (`--replay-samples` adds 12).
 
 ### Suggested demo script (Maria's scenario, about 5 minutes)
 
-1. Start `run_demo.bat --inject 50`. Show the 3 vans live and the "Mock data" badge.
+1. Start `run_demo.bat --inject 50 --replay-samples`. Show the 3 vans live and the "Mock data" badge.
 2. Wait for a red **Traction loss** or orange **Harsh braking** alert. Show the
    pop-up, the red dot on the map and the latency of that alert.
 3. Click **Acknowledge** on it.
-4. After about 2 minutes, show the Latency panel (50+ hazards, p95 well under 2 s)
-   and the Route table (Route B has the highest hazards per 100 km).
+4. After about 3 minutes, show the Latency panel (50+ hazards, p95 well under 2 s)
+   and the Route performance panel: Route B has the most hazards per 100 km and the most
+   stop time, and 12 records are flagged by the quality checks (see docs/pipeline.md).
 5. Explain that the latency is small because the network is simulated; the real
    number comes when Zenoh runs between two VMs.
 
@@ -289,7 +306,8 @@ to an alert in the cloud, in under 2 seconds (FR-19).
 
 ```
 config/fleet.json            vans, routes and speed limits (read by both halves)
-fakes/                       stand-ins for Kuksa and Zenoh, for the one-process demo and tests
+fakes/                       stand-ins for Kuksa, Zenoh and Pub/Sub, for the one-process demo and tests
+data/samples/                reproducible input with known answers (12 bad records)
 vehicle/                     everything that runs on a van              (owner: Ahmad)
   common/                    config, VSS paths, Databroker + Zenoh connection
   hazard_rules/              pure hazard rules (Thresholds, Finding, evaluate)
@@ -300,13 +318,18 @@ vehicle/                     everything that runs on a van              (owner: 
   tests/
 cloud/                       everything that runs in the cloud          (owner: Mohammad)
   app/main.py                CloudService + REST API + WebSocket
-  app/analytics.py           FleetAnalytics, Twin, TripTracker (no I/O)
+  app/analytics.py           FleetAnalytics, Twin (no I/O)
   app/store.py               Store: all database code
   app/transport.py           Zenoh connection (cloud side)
   app/static/                the dashboard                              (owner: Giancarlo)
+  quality.py                 validate(): the data quality rules, used by both paths
+  pipeline/                  V1: Pub/Sub bridge, Beam graph, trip math, runners (docs/pipeline.md)
   db/                        SQL schemas (SQLite for the demo and tests, PostgreSQL in the cloud)
   tests/
 tools/inject_hazards.py      injects hazards for the latency test
+tools/replay_samples.py      replays the sample records onto Zenoh
+tools/dataflow_job.py        starts and drains the Dataflow job
+specs/                       V1 spec, plan and tasks (spec-driven development)
 tests/test_end_to_end.py     integration test
 deploy/                      Dockerfiles, Ankaios, Kubernetes, Jenkins (see deploy/README.md)
 .github/workflows/ci.yml     CI: run the tests                          (owner: Giancarlo)

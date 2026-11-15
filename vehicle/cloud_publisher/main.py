@@ -7,11 +7,8 @@ The Detector writes four hazard signals at once, but they can arrive as
 separate updates, so the Bridge waits SETTLE_S before sending one complete
 hazard event. last_hazard stops the same hazard from being sent twice.
 
-Run one publisher on its own (next phase, inside a container):
-    python -m vehicle.cloud_publisher.main
-
-NEXT PHASE: nothing changes here. Set TRANSPORT=zenoh and the session in
-vehicle/common/transport.py becomes a real Zenoh session.
+Run one publisher on its own (Ankaios does this in a container on the vehicle VM):
+    TRANSPORT=zenoh ZENOH_ENDPOINT=tcp/<router-ip>:7447 python -m vehicle.cloud_publisher.main
 """
 
 from __future__ import annotations

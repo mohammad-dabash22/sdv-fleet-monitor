@@ -40,6 +40,14 @@ def test_req_037_dataflow_never_starts_on_a_merge():
     assert "tools.dataflow_job start" in stage and "tools.dataflow_job drain" in stage
 
 
+def test_req_021_ci_runs_on_pull_requests_main_and_work_branches():
+    ci = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    triggers = ci.get("on", ci.get(True))          # YAML 1.1 reads the key `on` as True
+    assert "pull_request" in triggers
+    assert triggers["push"]["branches"] == ["main", "v1/**", "v2/**"]
+    assert ci["jobs"]["test"]["env"]["TEST_DATABASE_URL"].startswith("postgresql://")   # the store tests also run on PostgreSQL
+
+
 def test_req_027_bridge_container_in_the_cloud_pod():
     docs = [d for d in yaml.safe_load_all((ROOT / "deploy/k8s/cloud.yaml").read_text(encoding="utf-8")) if d]
     pod = next(d for d in docs if d["kind"] == "Deployment")["spec"]["template"]["spec"]

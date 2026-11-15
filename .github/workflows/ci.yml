@@ -1,11 +1,12 @@
-# CI: run all tests on every pull request and on every push to main.
+# CI: run all tests on every pull request, and on every push to main and to the V1/V2 work branches
+# (spec REQ-021).
 # Building the images and deploying are done by Jenkins (Jenkinsfile, spec DV-3).
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, "v1/**", "v2/**"]
 
 jobs:
   test:

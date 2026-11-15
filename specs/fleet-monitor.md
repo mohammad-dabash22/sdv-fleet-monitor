@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Approved** by the user on 2026-11-14; open questions answered the same day (D-15, D-16) |
+| Status | **Approved** by the user on 2026-11-14; open questions answered the same day (D-15, D-16); dependency split added while planning (D-17) |
 | Date | 2026-11-14 |
 | Baseline | MVP at commit `4c21d13` (branch `v1/sdd`): 34 tests pass |
 | Sources | `docs/requirements/srs.md` (SRS v1.0, `FR-x` / `NFR-x`), `docs/requirements/charter.md` (Charter v2), `README.md`, the code |
@@ -41,6 +41,8 @@ runtime evidence in section 7 exists.
 1. The three vans, their routes and speed limits stay as in `config/fleet.json`.
 2. GCP project, GKE cluster, `sdv-vehicles` VM and Jenkins from the MVP stay; V1 adds to them and removes nothing.
 3. Python 3.11+ everywhere (CI 3.11, Jenkins 3.12, laptops 3.12). `apache-beam[gcp]` supports these versions.
+   `apache-beam` 2.77.0 needs `protobuf < 7` and `kuksa-client` 0.6.0 needs `protobuf >= 7.35.1`, so they cannot share one
+   environment; the dependencies are split into a vehicle set and a cloud set (D-17, REQ-023).
 4. Dataflow runs in the same region as GKE (`us-central1`) and only during demos and measurements (D-3), so credits last.
 5. The message JSON shapes in REQ-007 are the contract; the pipeline reads them unchanged.
 6. The SRS and charter are not edited (CLAUDE.md); every difference is listed in section 8.
@@ -267,9 +269,22 @@ UI behavior is checked by hand (demo script in the README).
 - Note: the Jenkins test stage has no PostgreSQL, so the PostgreSQL store tests only run in GitHub Actions.
 - Code: `Jenkinsfile`, `cloudbuild.yaml`, `deploy/k8s/*`, `deploy/jenkins/values.yaml`, `deploy/cicd-db/*` · Evidence: Jenkins build history, `deployments` table
 
-**REQ-023 Containers** · Done · NFR-4
+**REQ-023 Containers and dependencies** · Done, **Changed in V1** · NFR-4 · D-17
 - AC1: Databroker, vehicle apps and dashboard/cloud each have a Dockerfile; the vehicle image runs any vehicle app by its command.
-- Code: `deploy/docker/*.Dockerfile`
+- AC2 (**V1**): the dependencies are split by half, because `apache-beam` and `kuksa-client` need incompatible `protobuf` versions:
+
+| File | Packages | Used by |
+|---|---|---|
+| `requirements-vehicle.txt` | `kuksa-client`, `eclipse-zenoh` | vehicle image (Ankaios VM), `tools.inject_hazards` |
+| `requirements-cloud.txt` | `fastapi`, `uvicorn`, `eclipse-zenoh`, `psycopg2-binary` | everything on the cloud side |
+| `requirements-pipeline.txt` | `apache-beam[gcp]`, `google-cloud-pubsub` | the bridge and the Beam pipeline |
+| `requirements.txt` | `-r requirements-cloud.txt` and `-r requirements-pipeline.txt` | default laptop demo, cloud/dashboard image, CI (through `requirements-dev.txt`) |
+
+- AC3 (**V1**): `pip install -r requirements.txt` and `pip install -r requirements-vehicle.txt` each succeed in a fresh venv, and
+  the vehicle image no longer contains the cloud packages.
+- AC4 (**V1**): no cloud or test code imports `kuksa_client` (only `vehicle/common/databroker.py` and `tools/inject_hazards.py`
+  do, and only when the real Databroker is used).
+- Code: `deploy/docker/*.Dockerfile`, `requirements*.txt`
 
 **REQ-024 Integration test** · Partial · FR-19
 - AC1: One van + the cloud, wired with the fake Kuksa and fake Zenoh: a hard-braking value reaches `/api/alerts` in under 2 s with route and location.
@@ -280,6 +295,8 @@ UI behavior is checked by hand (demo script in the README).
 **REQ-025 One-command demo** · Done · FR-1, NFR-3
 - AC1: `python run_demo.py` (or `run_demo.bat` / `run_demo.sh`) starts 3 vans, the cloud and the dashboard in one process and opens the browser.
 - AC2: Options `--inject`, `--port`, `--seed`, `--time-scale`, `--net-delay`, `--no-browser`, `--databroker kuksa`, `--host` work as the README says.
+- AC3 (**V1**, D-17): `--databroker kuksa` needs a second venv with `requirements-vehicle.txt` + `requirements-cloud.txt`
+  (no Beam). In that venv the live path works fully and the route report says "pipeline not installed"; the README explains both venvs.
 - Code: `run_demo.py`, `run_demo.bat`, `run_demo.sh` · Tests: no test yet (manual)
 
 **REQ-026 Latency test tool** · Done · charter section 2 (≥ 50 hazards)
@@ -350,13 +367,17 @@ From valid telemetry and hazard events, Beam computes per completed trip and per
 
 - AC1: Only trips seen from start to end count: the first trip seen for a van after the pipeline starts, and the trip still in progress, are left out.
 - AC2: With the sample file (REQ-036), every metric equals a value computed by hand and written in the test.
-- AC3: Running the same input twice gives the same rows (results are keyed by van + trip and route, and overwritten, not added).
+- AC3: Running the same input twice gives the same rows: a trip row is keyed by van, trip id and the trip's start time, and is
+  overwritten, not added. (The start time is in the key because trip ids start again at 1 when a simulator restarts.)
 - AC4: In the laptop demo with the default seed, after each van has finished two trips, Route B has the highest hazards per 100 km
   and the most stop time (charter scenario step 5).
 - Code (planned): `cloud/pipeline/transforms.py`
 
 **REQ-032 Pipeline tables** · New in V1 · FR-9 · D-2
-- AC1: `trip_stats`, `route_stats` and `quality_flags` exist in both schema files (`cloud/db/schema.*.sql`), same columns, created idempotently.
+- AC1: Tables `trip_stats` and `quality_flags`, and a view `route_stats` that sums `trip_stats` per route, exist in both schema
+  files (`cloud/db/schema.*.sql`) with the same columns, created idempotently. Route numbers are pure sums and ratios of trip
+  numbers, so a view keeps one source (D-5) and cannot double-count.
+- AC1a: a `quality_flags` row is keyed by a hash of the raw message, so a Pub/Sub redelivery or a batch re-run does not add a second row.
 - AC2: Each row has `processed_at_ms`, so pipeline lag (processing time − record time) can be measured.
 - AC3: The old `trips` table and its code are removed (REQ-014).
 - AC4: On GKE, `fleet-db` gets a second, **internal** load balancer Service so Dataflow workers in the VPC can reach it; the
@@ -367,7 +388,8 @@ From valid telemetry and hazard events, Beam computes per completed trip and per
 The pipeline is one composite Beam transform; only its input and runner change.
 - AC1: **Tests and CI**: the transforms run on the DirectRunner with in-memory input (`TestPipeline` + `Create`), with no GCP access.
 - AC2: **Laptop demo and mock dashboard**: every 30 s, the same transform runs in batch on the DirectRunner over the bridge's
-  in-memory buffer and writes the tables. A finished trip shows in the route report within about 30 s.
+  in-memory buffer and writes the tables. A finished trip shows in the route report within about 30 s. The buffer keeps the
+  last hour of messages, so the mock dashboard on GKE (which runs for days) does not slow down; older trips are already stored.
 - AC3: **GCP**: the same transform runs as a streaming Dataflow job reading the two Pub/Sub subscriptions and writing to the fleet PostgreSQL.
 - AC4: If the pipeline is not running, the live dashboard still works; the route report shows the last results.
 - Code (planned): `cloud/pipeline/run.py`, `run_demo.py`
@@ -431,9 +453,10 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC4: The one manual setup step is documented: give the `sdv-cloud` pod permission to publish to Pub/Sub, and give Dataflow access to the database secret.
 - Code: `Jenkinsfile`, `deploy/k8s/cloud.yaml`, `deploy/k8s/fleet-db.yaml`, `tools/dataflow_job.py`
 
-**REQ-039 Tests run on Windows** · New in V1 · NFR-4 · D-10
-- AC1: The README's "Run the tests" section has a Windows step: `pip uninstall -y pyreadline` (installed by `kuksa-client`,
-  broken on Python 3.10+, and imported by pytest at start-up).
+**REQ-039 Tests run on Windows** · New in V1 · NFR-4 · D-10, D-17
+- AC1: With the split (REQ-023), the default venv has no `kuksa-client` and therefore no `pyreadline`, so `python -m pytest`
+  works on Windows with no extra step. The README notes `pip uninstall -y pyreadline` only for the Kuksa venv (installed by
+  `kuksa-client`, broken on Python 3.10+, and imported by pytest at start-up).
 - AC2: Checked before writing it: our code imports only `kuksa_client.grpc` (`vehicle/common/databroker.py`, `tools/inject_hazards.py`), and that works without `pyreadline`.
 - AC3: After the step, `python -m pytest` runs on Windows.
 - Code: `README.md`
@@ -450,7 +473,8 @@ The pipeline is one composite Beam transform; only its input and runner change.
 
 | What | Command |
 |---|---|
-| Install | `pip install -r requirements-dev.txt` (Windows: then `pip uninstall -y pyreadline`, REQ-039) |
+| Install (default: cloud + pipeline + tests) | `pip install -r requirements-dev.txt` |
+| Install (Kuksa mode, second venv) | `pip install -r requirements-vehicle.txt -r requirements-cloud.txt` (Windows: then `pip uninstall -y pyreadline`) |
 | Test | `python -m pytest` |
 | Test with PostgreSQL | `TEST_DATABASE_URL=postgresql://fleet:fleet@localhost:5432/fleet python -m pytest` |
 | Demo | `python run_demo.py` · `python run_demo.py --inject 50` |
@@ -500,7 +524,7 @@ GCP; the route report on the real dashboard; a new latency run of ≥ 50 hazards
 ## 9. Decisions log
 
 The user answered each question in chat on 2026-11-14. For D-1 to D-14 the user accepted the recommended option without adding a
-reason of their own, so the reason column is the reason given with the recommendation. D-15 and D-16 are the user's own answers.
+reason of their own, so the reason column is the reason given with the recommendation. D-15 and D-16 are the user's own answers. D-17 came up while planning; the user accepted the recommended option.
 
 | # | Question | Decision | Reason |
 |---|---|---|---|
@@ -520,6 +544,7 @@ reason of their own, so the reason column is the reason given with the recommend
 | D-14 | P5: Velocitas? | (a) Keep it deferred and record the deviation. (Rejected: try again in V1.) | Same four blockers as in the MVP, and the V1 deadline is 2026-11-16. |
 | D-15 | Open question 1: why Jenkins and not GitHub Actions for deployment? | Jenkins deploys; GitHub Actions keeps running the tests. | The user's reason: to apply what was learned in the course labs and assignments. |
 | D-16 | Open question 2: Dataflow budget? | 1 worker, the smallest machine type, started only for a demo or measurement and drained right after (REQ-037 AC2a). | The user's reason: a safe default for the credits. |
+| D-17 | Found while planning: `apache-beam` (protobuf < 7) and `kuksa-client` 0.6.0 (protobuf ≥ 7.35.1) cannot share an environment. How to split? | (a) Split the dependencies by half: vehicle set and cloud set (REQ-023). (Rejected: Beam in its own process even on the laptop; downgrade `kuksa-client`.) | Matches the rule that the two halves never import each other; the cloud code and tests never use `kuksa-client`. Cost: Kuksa mode on the laptop needs a second venv without the route report. |
 
 **Looked at, not proposed** (found while reading; left out to keep V1 small): `limit` and `minutes` query parameters have no upper
 bound; Jenkins has no smoke test after deploy (rollout status and readiness probes only); the Jenkins test stage has no

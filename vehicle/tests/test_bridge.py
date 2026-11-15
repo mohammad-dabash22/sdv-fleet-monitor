@@ -37,6 +37,16 @@ def test_hazard_event_is_sent_once():
     assert event["lat"] == 43.9
 
 
+def test_req_007_hazard_event_has_trip_id():
+    got = collect("fleet/*/hazards")
+    bridge = Bridge(fake_zenoh.open(), {"vehicle_id": "veh-02", "route_id": "B"})
+    bridge.on_updates({vss.FLEET_TRIP_ID: Datapoint(7)})
+    bridge.on_updates({vss.HAZARD_TYPE: Datapoint("HARSH_BRAKING"), vss.HAZARD_SEVERITY: Datapoint(2),
+                       vss.HAZARD_DETAIL: Datapoint("x"), vss.HAZARD_DETECTED_AT: Datapoint(1000)})
+    assert wait_for(lambda: len(got) == 1)
+    assert got[0][1]["trip_id"] == 7
+
+
 def test_hazard_active_before_start_is_not_resent():
     got = collect("fleet/*/hazards")
     bridge = Bridge(fake_zenoh.open(), {"vehicle_id": "veh-01", "route_id": "A"})

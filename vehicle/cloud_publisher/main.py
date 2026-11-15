@@ -97,6 +97,7 @@ class Bridge:
         event = {
             "vehicle_id": self.vehicle["vehicle_id"],
             "route_id": v.get(vss.FLEET_ROUTE_ID, self.vehicle["route_id"]),
+            "trip_id": v.get(vss.FLEET_TRIP_ID),  # lets the pipeline count hazards per trip (REQ-007 AC2)
             "type": kind,
             "severity": v.get(vss.HAZARD_SEVERITY, 0),
             "detail": v.get(vss.HAZARD_DETAIL, ""),

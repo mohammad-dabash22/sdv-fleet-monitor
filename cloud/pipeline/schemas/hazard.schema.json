@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fleet/hazard",
+  "title": "Hazard event on fleet/{vehicle_id}/hazards",
+  "description": "Sent by the CloudPublisher (vehicle/cloud_publisher/main.py, Bridge.flush_hazard) once per new hazard. trip_id is new in V1 and optional for readers, so an MVP publisher still fits. Shape only: the quality rules are in cloud/quality.py. Spec REQ-007.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vehicle_id", "route_id", "type", "severity", "detail", "lat", "lon", "speed_kmh", "t0_ms"],
+  "properties": {
+    "vehicle_id": {"type": "string"},
+    "route_id":   {"type": ["string", "null"]},
+    "trip_id":    {"type": ["integer", "null"], "description": "New in V1 (REQ-007 AC2)"},
+    "type":       {"enum": ["HARSH_BRAKING", "TRACTION_LOSS", "OVERSPEED", "LOW_ENERGY", "OVERHEAT"]},
+    "severity":   {"type": "integer", "minimum": 1, "maximum": 3, "description": "1 warning, 2 high, 3 critical"},
+    "detail":     {"type": "string"},
+    "lat":        {"type": ["number", "null"]},
+    "lon":        {"type": ["number", "null"]},
+    "speed_kmh":  {"type": ["number", "null"]},
+    "t0_ms":      {"type": "integer", "description": "Detection time on the vehicle (t0), Unix ms"}
+  }
+}

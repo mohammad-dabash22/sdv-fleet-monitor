@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fleet/telemetry",
+  "title": "Telemetry message on fleet/{vehicle_id}/telemetry",
+  "description": "Sent by the CloudPublisher (vehicle/cloud_publisher/main.py, Bridge.snapshot) once per second. Shape only: the quality rules (ranges, lateness) are in cloud/quality.py. Values can be null until the twin has every signal. Spec REQ-007.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["vehicle_id", "route_id", "trip_id", "ts_ms", "speed_kmh", "lat", "lon", "soc_pct",
+               "engine_on", "odometer_km", "hazard_lights", "hazard"],
+  "properties": {
+    "vehicle_id":    {"type": "string", "description": "Fleet id, for example veh-02"},
+    "route_id":      {"type": ["string", "null"], "description": "Route the van drives, for example B"},
+    "trip_id":       {"type": ["integer", "null"], "description": "Goes up by one each time the van passes the depot"},
+    "ts_ms":         {"type": "integer", "description": "Unix time in milliseconds when the message was sent"},
+    "speed_kmh":     {"type": ["number", "null"]},
+    "lat":           {"type": ["number", "null"]},
+    "lon":           {"type": ["number", "null"]},
+    "soc_pct":       {"type": ["number", "null"], "description": "Battery state of charge, %"},
+    "engine_on":     {"type": "boolean"},
+    "odometer_km":   {"type": ["number", "null"]},
+    "hazard_lights": {"type": "boolean"},
+    "hazard":        {"type": ["string", "null"], "description": "Current hazard type, or null when there is none"}
+  }
+}

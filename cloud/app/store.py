@@ -104,34 +104,6 @@ class Store:
         rows = self._read("SELECT latency_ms FROM alerts WHERE source = 'edge' AND latency_ms IS NOT NULL", ())
         return [r["latency_ms"] for r in rows]
 
-    # ---------------------------------------------------------------- trips
-    def add_trip(self, t: dict) -> None:
-        self._write(
-            "INSERT INTO trips (vehicle_id, route_id, trip_id, started_ms, ended_ms, distance_km,"
-            " energy_used_pct, hazards) VALUES (?,?,?,?,?,?,?,?)",
-            (t["vehicle_id"], t["route_id"], t.get("trip_id"), t.get("started_ms"), t.get("ended_ms"),
-             t.get("distance_km"), t.get("energy_used_pct"), t.get("hazards", 0)),
-        )
-
-    def recent_trips(self, limit: int = 20) -> list[dict]:
-        return self._read("SELECT * FROM trips ORDER BY id DESC LIMIT ?", (limit,))
-
-    def route_summary(self) -> list[dict]:
-        """Per route: completed trips joined with hazard counts."""
-        return self._read(
-            """
-            SELECT r.route_id,
-                   (SELECT COUNT(*) FROM trips t WHERE t.route_id = r.route_id) AS trips,
-                   (SELECT COALESCE(SUM(distance_km), 0) FROM trips t WHERE t.route_id = r.route_id) AS distance_km,
-                   (SELECT COALESCE(SUM(hazards), 0) FROM trips t WHERE t.route_id = r.route_id) AS trip_hazards,
-                   (SELECT AVG(energy_used_pct) FROM trips t WHERE t.route_id = r.route_id) AS avg_energy_pct,
-                   (SELECT COUNT(*) FROM alerts a WHERE a.route_id = r.route_id AND a.source = 'edge') AS hazard_alerts
-            FROM (SELECT route_id FROM trips UNION SELECT route_id FROM alerts WHERE route_id IS NOT NULL) r
-            ORDER BY r.route_id
-            """,
-            (),
-        )
-
     # ------------------------------------------------- pipeline (REQ-032)
     # Written by the Beam pipeline's sinks only; CloudService reads them for the route report.
     TRIP_COLUMNS = ("vehicle_id", "route_id", "trip_id", "started_ms", "ended_ms", "samples", "distance_km",

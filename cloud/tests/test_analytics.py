@@ -38,18 +38,6 @@ def test_hazard_creates_alert_with_latency():
     assert fa.twins["veh-02"].hazard["type"] == "TRACTION_LOSS"
 
 
-def test_trip_result_after_first_full_trip():
-    fa = FleetAnalytics(FLEET)
-    fa.ingest_telemetry(telemetry(trip=1, odo=100), 1.0)        # we join mid-trip: partial
-    assert "trip" not in kinds(fa.ingest_telemetry(telemetry(trip=2, odo=105), 2.0))
-    fa.ingest_hazard({"vehicle_id": "veh-02", "type": "HARSH_BRAKING", "severity": 2, "t0_ms": 2900}, 3.0)
-    fa.ingest_telemetry(telemetry(trip=2, odo=108, soc=78), 4.0)
-    events = fa.ingest_telemetry(telemetry(trip=3, odo=115, soc=77), 5.0)
-    trip = next(e["data"] for e in events if e["kind"] == "trip")
-    assert trip["distance_km"] == 10 and trip["hazards"] == 1 and trip["hazards_per_100km"] == 10.0
-    assert trip["energy_used_pct"] == 3.0
-
-
 def test_req_029_invalid_telemetry_does_not_update_twin():
     fa = FleetAnalytics(FLEET)
     fa.ingest_telemetry(telemetry(), 10.0)

@@ -300,7 +300,6 @@ function connect() {
         refreshSoon();
         break;
       case "alerts_changed":
-      case "trip":
         refreshSoon();
         break;
     }

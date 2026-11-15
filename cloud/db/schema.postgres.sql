@@ -36,18 +36,6 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts (status);
 
-CREATE TABLE IF NOT EXISTS trips (
-    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    vehicle_id      TEXT    NOT NULL,
-    route_id        TEXT    NOT NULL,
-    trip_id         INTEGER,
-    started_ms      BIGINT,
-    ended_ms        BIGINT,
-    distance_km     DOUBLE PRECISION,
-    energy_used_pct DOUBLE PRECISION,
-    hazards         INTEGER
-);
-
 -- ---------------------------------------------------------------- V1 data pipeline (spec REQ-032)
 -- Same tables and columns as schema.sqlite.sql. Written only by the Beam pipeline.
 

@@ -12,7 +12,7 @@ URLS = ["sqlite:///:memory:"] + ([os.environ["TEST_DATABASE_URL"]] if os.environ
 def store(request):
     s = Store(request.param)
     if s.postgres:
-        s._write("TRUNCATE telemetry, alerts, trips, trip_stats, quality_flags RESTART IDENTITY", (), rowcount=True)
+        s._write("TRUNCATE telemetry, alerts, trip_stats, quality_flags RESTART IDENTITY", (), rowcount=True)
     return s
 
 
@@ -84,15 +84,6 @@ def test_alert_lifecycle(store):
     assert s.latencies() == [100, 100]
 
 
-def test_route_summary_joins_trips_and_alerts(store):
-    s = store
-    s.add_trip({"vehicle_id": "veh-02", "route_id": "B", "trip_id": 2, "distance_km": 8.0,
-                "energy_used_pct": 2.5, "hazards": 2})
-    s.add_alert(alert())
-    s.add_alert(alert(route_id="A"))
-    rows = {r["route_id"]: r for r in s.route_summary()}
-    assert rows["B"]["trips"] == 1 and rows["B"]["trip_hazards"] == 2 and rows["B"]["hazard_alerts"] == 1
-    assert rows["A"]["trips"] == 0 and rows["A"]["hazard_alerts"] == 1
 
 
 def test_telemetry_history(store):

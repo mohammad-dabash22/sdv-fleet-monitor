@@ -9,7 +9,6 @@ Event kinds returned:
     {"kind": "twin",      "data": twin}      push the twin to the dashboard
     {"kind": "alert",     "data": alert}     store + push a new alert
     {"kind": "clear",     "vehicle_id", "source", "type"}   auto-resolve old alerts
-    {"kind": "trip",      "data": trip}      store a completed trip
 
 NEXT PHASE (Phase 2): add the data quality checks (FR-10) at the start of
 ingest_telemetry, anomaly detection (FR-11) and route cost/profit (FR-12)
@@ -53,17 +52,6 @@ class Twin:
         }
 
 
-@dataclass
-class TripTracker:
-    trip_count: int                 # the trip_id reported by the vehicle
-    start_odometer: float
-    energy_used_pct: float = 0.0
-    hazards: int = 0
-    partial: bool = False           # True if we did not see the start of this trip
-    last_energy: float | None = None
-    started_ms: int = 0
-
-
 class FleetAnalytics:
     def __init__(self, fleet: dict, offline_after_s: float = 10.0) -> None:
         self.routes: dict[str, dict] = fleet.get("routes", {})
@@ -75,7 +63,6 @@ class FleetAnalytics:
                       self.routes.get(v["route_id"], {}).get("name", v["route_id"]))
             for vid, v in self.vehicles.items()
         }
-        self.trips: dict[str, TripTracker] = {}
 
     # ------------------------------------------------------------------ inputs
     def ingest_telemetry(self, msg: dict, now: float) -> list[dict]:
@@ -97,7 +84,6 @@ class FleetAnalytics:
             twin.hazard = None
 
         events += self._track_energy(twin, msg, now)
-        events += self._track_trip(twin, msg, now)
         events.append({"kind": "twin", "data": twin.as_dict()})
         return events
 
@@ -109,9 +95,6 @@ class FleetAnalytics:
         t0_ms = msg.get("t0_ms")
         twin.hazard = {"type": msg.get("type"), "severity": msg.get("severity", 0),
                        "detail": msg.get("detail", ""), "t0_ms": t0_ms}
-        tracker = self.trips.get(twin.vehicle_id)
-        if tracker is not None:
-            tracker.hazards += 1
         alert = {
             "vehicle_id": twin.vehicle_id,
             "vehicle_name": twin.name,
@@ -138,22 +121,6 @@ class FleetAnalytics:
                 events.append({"kind": "twin", "data": twin.as_dict()})
         return events
 
-    # ------------------------------------------------------------ trip results
-    def trip_result(self, twin: Twin, distance_km: float, energy_used_pct: float, hazards: int,
-                    now: float) -> dict:
-        tracker = self.trips[twin.vehicle_id]
-        return {
-            "vehicle_id": twin.vehicle_id,
-            "route_id": twin.route_id,
-            "trip_id": tracker.trip_count,
-            "started_ms": tracker.started_ms,
-            "ended_ms": int(now * 1000),
-            "distance_km": round(distance_km, 3),
-            "energy_used_pct": round(energy_used_pct, 2),
-            "hazards": hazards,
-            "hazards_per_100km": round(hazards * 100 / distance_km, 1) if distance_km > 0 else None,
-        }
-
     # ---------------------------------------------------------------- helpers
     def snapshot(self) -> list[dict]:
         return [t.as_dict() for t in self.twins.values()]
@@ -173,9 +140,6 @@ class FleetAnalytics:
         events: list[dict] = []
         if soc is not None and last is not None:
             drop = last - soc        # a jump up means the van was charged: that is not a drop
-            tracker = self.trips.get(twin.vehicle_id)
-            if drop > 0 and tracker is not None:
-                tracker.energy_used_pct += drop
             if drop > ENERGY_DROP_PCT:
                 events.append({"kind": "alert", "data": self._cloud_alert(
                     twin, "ENERGY_DROP", 2, f"Battery fell {drop:.1f}% in one sample", now)})
@@ -183,24 +147,6 @@ class FleetAnalytics:
             twin.last_soc = soc
         return events
 
-    def _track_trip(self, twin: Twin, msg: dict, now: float) -> list[dict]:
-        trip_id, odo, soc = msg.get("trip_id"), msg.get("odometer_km"), msg.get("soc_pct")
-        if trip_id is None or odo is None:
-            return []
-        tracker = self.trips.get(twin.vehicle_id)
-        now_ms = int(now * 1000)
-        if tracker is None:
-            self.trips[twin.vehicle_id] = TripTracker(trip_id, odo, partial=True, last_energy=soc, started_ms=now_ms)
-            return []
-        if trip_id == tracker.trip_count:
-            return []
-        events: list[dict] = []
-        if not tracker.partial:
-            result = self.trip_result(twin, odo - tracker.start_odometer, tracker.energy_used_pct,
-                                      tracker.hazards, now)
-            events.append({"kind": "trip", "data": result})
-        self.trips[twin.vehicle_id] = TripTracker(trip_id, odo, last_energy=soc, started_ms=now_ms)
-        return events
 
 
 def latency_stats(values: list[float], target_ms: float = 2000.0) -> dict:

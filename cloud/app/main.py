@@ -93,9 +93,6 @@ class CloudService:
             elif kind == "clear":
                 if self.store.clear_alerts(ev["vehicle_id"], int(time.time() * 1000), ev["source"], ev["type"]):
                     self.push({"kind": "alerts_changed"})
-            elif kind == "trip":
-                self.store.add_trip(ev["data"])
-                self.push(ev)
             elif kind == "twin":
                 self.push(ev)
 

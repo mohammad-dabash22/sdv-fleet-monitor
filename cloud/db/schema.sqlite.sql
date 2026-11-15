@@ -36,18 +36,6 @@ CREATE TABLE IF NOT EXISTS alerts (
 );
 CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts (status);
 
-CREATE TABLE IF NOT EXISTS trips (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    vehicle_id      TEXT    NOT NULL,
-    route_id        TEXT    NOT NULL,
-    trip_id         INTEGER,
-    started_ms      INTEGER,
-    ended_ms        INTEGER,
-    distance_km     REAL,
-    energy_used_pct REAL,
-    hazards         INTEGER
-);
-
 -- ---------------------------------------------------------------- V1 data pipeline (spec REQ-032)
 -- Written only by the Beam pipeline (cloud/pipeline/transforms.py), never by CloudService.
 

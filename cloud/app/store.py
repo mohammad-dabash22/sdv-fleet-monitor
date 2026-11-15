@@ -44,6 +44,10 @@ class Store:
             return db
         raise ValueError(f"Unsupported DATABASE_URL: {url!r} (use sqlite:/// or postgresql://)")
 
+    def ping(self) -> None:
+        """Raise if the database does not answer (the store keeps one connection and never reconnects)."""
+        self._read("SELECT 1 AS ok", ())
+
     # ------------------------------------------------------------ telemetry
     def add_telemetry(self, m: dict) -> None:
         self._write(

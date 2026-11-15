@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .analytics import FleetAnalytics, latency_stats
@@ -157,9 +157,15 @@ def create_app(cfg: CloudConfig | None = None, session: Any = None) -> FastAPI:
         return FileResponse(STATIC_DIR / "index.html")
 
     @app.get("/api/health")
-    def health() -> dict:
-        return {"status": "ok", "transport": cfg.transport, "database": cfg.database_url.split(":")[0],
+    def health() -> Any:
+        """503 when the database does not answer, so Kubernetes restarts the pod and it reconnects (REQ-038)."""
+        info = {"transport": cfg.transport, "database": cfg.database_url.split(":")[0],
                 "vehicles": len(service.analytics.twins)}
+        try:
+            service.store.ping()
+        except Exception as exc:  # any driver error means the connection is unusable
+            return JSONResponse(status_code=503, content={"status": "error", "reason": str(exc), **info})
+        return {"status": "ok", **info}
 
     @app.get("/api/fleet")
     def fleet_view() -> list[dict]:

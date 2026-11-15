@@ -22,6 +22,24 @@ def test_health_and_fleet():
         assert client.get("/").status_code == 200
 
 
+def test_req_038_health_returns_503_when_database_is_down():
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        # A PostgreSQL restart leaves the store's only connection dead; closing it does the same.
+        client.app.state.service.store.db.close()
+        res = client.get("/api/health")
+        assert res.status_code == 503
+        body = res.json()
+        assert body["status"] == "error"
+        assert "closed" in body["reason"].lower()   # sqlite3: "Cannot operate on a closed database."
+
+
+def test_req_038_health_ok_when_database_answers():
+    with TestClient(create_app(CloudConfig(transport="fake"))) as client:
+        res = client.get("/api/health")
+        assert res.status_code == 200
+        assert res.json()["status"] == "ok" and res.json()["database"] == "sqlite"
+
+
 def test_hazard_flows_to_alerts_and_can_be_acked():
     with TestClient(create_app(CloudConfig(transport="fake"))) as client:
         bus = fake_zenoh.open()

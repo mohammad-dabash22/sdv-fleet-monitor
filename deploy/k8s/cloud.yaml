@@ -68,6 +68,14 @@ spec:
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5
+          # /api/health returns 503 when PostgreSQL does not answer. The store never reconnects,
+          # so Kubernetes restarts the container, which connects again on start (spec REQ-038).
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 20
 ---
 # Public: the dashboard with real data.
 apiVersion: v1

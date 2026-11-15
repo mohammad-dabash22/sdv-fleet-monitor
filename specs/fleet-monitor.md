@@ -404,6 +404,10 @@ The pipeline is one composite Beam transform; only its input and runner change.
 - AC2: `python -m tools.replay_samples` publishes the file to the Zenoh telemetry and hazard keys, so the **whole system** sees it:
   CloudService rejects the bad records and Beam flags them. Timestamps are shifted so each record keeps its offset from "now"
   (late records stay 60 s old).
+- AC2a (found in T12): into a **running fleet** the replay sends only the bad records; `--all` also sends the good ones,
+  for a system without vans (as the tests do). The good sample records reuse real van and trip ids, so in a running fleet
+  they mixed with the live vans' trips (Route B showed 30,751 km) and moved Van 02 on the map. Sample hazard events use
+  offset 0, because older t0 values were counted as hazard latency (p95 rose to 11.4 s); their trip comes from `trip_id`.
 - AC3: It works in the laptop demo and against the real Zenoh router (`--zenoh tcp/<ip>:7447`).
 - AC4: The Beam tests read the same file.
 - Code (planned): `data/samples/telemetry.jsonl`, `tools/replay_samples.py`

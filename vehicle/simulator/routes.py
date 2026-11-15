@@ -23,11 +23,16 @@ ROUTES: dict[str, list[tuple[float, float]]] = {
 }
 
 # Chance per simulator tick (0.5 s) of each event, plus energy use factor.
-# Route B is stop-and-go downtown, so it has the most hazards (Maria's scenario).
-PROFILES: dict[str, dict[str, float]] = {
-    "A": {"harsh": 0.004, "traction": 0.002, "overspeed": 0.002, "energy_factor": 1.0},
-    "B": {"harsh": 0.030, "traction": 0.012, "overspeed": 0.001, "energy_factor": 1.3},
-    "C": {"harsh": 0.006, "traction": 0.003, "overspeed": 0.006, "energy_factor": 1.1},
+# "stop" is the chance of starting a delivery stop; "stop_s" is how long the van then waits at
+# 0 km/h (real seconds, min and max). Route B is stop-and-go downtown, so it has the most hazards
+# and the most and longest stops (Maria's scenario; spec REQ-035).
+PROFILES: dict[str, dict] = {
+    "A": {"harsh": 0.004, "traction": 0.002, "overspeed": 0.002, "energy_factor": 1.0,
+          "stop": 0.003, "stop_s": (6.0, 12.0)},
+    "B": {"harsh": 0.030, "traction": 0.012, "overspeed": 0.001, "energy_factor": 1.3,
+          "stop": 0.010, "stop_s": (15.0, 30.0)},
+    "C": {"harsh": 0.006, "traction": 0.003, "overspeed": 0.006, "energy_factor": 1.1,
+          "stop": 0.004, "stop_s": (6.0, 12.0)},
 }
 
 

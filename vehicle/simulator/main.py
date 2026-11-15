@@ -46,17 +46,31 @@ class Simulator:
         self.coolant_c = self.rng.uniform(60, 70)
         self.trip_id = 1
         self.overspeed_ticks = 0
+        self.stopping = False   # slowing down for a delivery stop
+        self.wait_ticks = 0     # ticks left standing at 0 km/h
 
     def tick(self) -> dict:
         """Advance the van by one tick and return the signal updates."""
         rng, p = self.rng, self.profile
 
         # 1. choose the target speed
-        if self.overspeed_ticks > 0:
+        if self.stopping:                      # delivery stop: slow down at the normal rate, then wait
+            self.target_kmh = 0.0
+            if self.speed_kmh <= 0.0:
+                self.stopping = False
+                self.wait_ticks = round(rng.uniform(*p["stop_s"]) / TICK_S)
+        elif self.wait_ticks > 0:
+            self.wait_ticks -= 1
+            if self.wait_ticks == 0:           # drive on
+                self.target_kmh = self.limit * 0.8
+        elif self.overspeed_ticks > 0:
             self.overspeed_ticks -= 1
             self.target_kmh = self.limit + 18
         elif rng.random() < p["overspeed"]:
             self.overspeed_ticks = 8
+        elif rng.random() < p["stop"]:
+            self.stopping = True
+            self.target_kmh = 0.0
         elif rng.random() < 0.05:
             self.target_kmh = self.limit * rng.uniform(0.7, 0.95)
 

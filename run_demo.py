@@ -78,8 +78,15 @@ def main() -> None:
     fake_zenoh.configure(delay_ms=args.net_delay, jitter_ms=args.net_delay * 0.75, seed=args.seed)
     fleet = json.loads((ROOT / "config" / "fleet.json").read_text(encoding="utf-8"))
 
-    app = create_app(CloudConfig(transport="fake", port=args.port))
+    cloud_cfg = CloudConfig(transport="fake", port=args.port)
+    app = create_app(cloud_cfg)
     stop = threading.Event()
+
+    # V1 data pipeline (spec REQ-033): bridge -> fake Pub/Sub buffer -> Beam batch every 30 s, in this
+    # process, writing into the dashboard's store. Not started when Beam is missing (Kuksa venv).
+    from cloud.pipeline.run import start_laptop_pipeline
+    app.state.pipeline = start_laptop_pipeline(app.state.service.store, cloud_cfg.database_url,
+                                               [v["vehicle_id"] for v in fleet["vehicles"]], fake_zenoh.open())
 
     vehicle_cfgs = []
     for i, v in enumerate(fleet["vehicles"]):
@@ -117,6 +124,8 @@ def main() -> None:
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{args.port}"
     print("\n  SDV Fleet Monitor (MOCK DATA)")
     print(f"  Databroker: {args.databroker}   Transport: fake   Database: SQLite in memory")
+    print("  Pipeline: Pub/Sub bridge (fake) + Apache Beam batch every 30 s" if app.state.pipeline
+          else "  Pipeline: not installed (no Apache Beam in this venv; see README, Two environments)")
     print(f"  Dashboard: {url}")
     print("  Press Ctrl+C to stop.\n")
     if not args.no_browser:

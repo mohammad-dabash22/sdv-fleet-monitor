@@ -352,6 +352,8 @@ One pure function (no I/O, no Beam) decides whether a message is valid. Both Clo
 - AC1: The Beam pipeline runs `validate()` on every message it reads. Invalid messages go to `quality_flags` (vehicle, route if
   known, kind, problem codes, the raw payload, the time it was processed) and are left out of all statistics.
 - AC2: Replaying the sample file (REQ-036) gives exactly one `quality_flags` row per bad record, with the expected codes, and none for good records.
+- AC3: A message that is not a JSON object at all is flagged with the code `MALFORMED`. `validate()` never sees it, because
+  there is no message to check; the live path ignores it (REQ-009 AC2), so this flag is the only trace it leaves (NFR-2).
 - Code (planned): `cloud/pipeline/transforms.py`
 
 **REQ-031 Beam: trip and route efficiency and safety** · New in V1 · FR-12, charter "Route efficiency and safety" · D-4, D-5

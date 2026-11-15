@@ -25,9 +25,19 @@ def test_req_037_jenkins_creates_the_topics_and_subscriptions_the_code_uses():
 def test_req_037_pubsub_stage_cannot_stop_the_deploy():
     jenkinsfile = (ROOT / "Jenkinsfile").read_text(encoding="utf-8")
     stages = re.findall(r"stage\('([a-z]+)'\)", jenkinsfile)
-    assert stages == ["test", "containerize", "database", "pubsub", "deploy", "record", "service"]
+    assert stages == ["test", "containerize", "database", "pubsub", "deploy", "record", "service", "dataflow"]
     pubsub = jenkinsfile.split("stage('pubsub')")[1].split("stage('deploy')")[0]
     assert "catchError(buildResult: 'UNSTABLE'" in pubsub
+
+
+def test_req_037_dataflow_never_starts_on_a_merge():
+    """D-7: a merge must not start a billed streaming job; only a manual "Build with Parameters" does."""
+    jenkinsfile = (ROOT / "Jenkinsfile").read_text(encoding="utf-8")
+    choices = re.search(r"choice\(name: 'DATAFLOW', choices: \[([^\]]+)\]", jenkinsfile).group(1)
+    assert [c.strip(" '") for c in choices.split(",")][0] == "none"          # the default for webhook/poll builds
+    stage = jenkinsfile.split("stage('dataflow')")[1]
+    assert "when { expression { params.DATAFLOW != 'none' } }" in stage
+    assert "tools.dataflow_job start" in stage and "tools.dataflow_job drain" in stage
 
 
 def test_req_027_bridge_container_in_the_cloud_pod():

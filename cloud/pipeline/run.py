@@ -96,6 +96,50 @@ class LaptopPipeline:
             self.run_once()
 
 
+def pubsub_element(kind: str, message: Any, now_ms: Any = lambda: int(time.time() * 1000)) -> tuple[str, bytes, int]:
+    """A Pub/Sub message as the pipeline's (kind, raw, arrival_ms). The publish time is when the bridge got
+    the message, so it is the arrival time for the LATE rule; Beam gives it as a datetime (or None)."""
+    published = getattr(message, "publish_time", None)
+    arrival = int(published.timestamp() * 1000) if published is not None else now_ms()
+    return kind, message.data, arrival
+
+
+def run_streaming(argv: list[str] | None = None) -> None:
+    """The Dataflow job (spec REQ-033 AC3). Started by tools/dataflow_job.py, which passes every option:
+
+        python -m cloud.pipeline.run --runner=DataflowRunner --project=... --database_url=... --vehicles=... ...
+    """
+    import argparse
+
+    import apache_beam as beam
+    from apache_beam.io.gcp.pubsub import ReadFromPubSub
+    from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
+
+    from cloud.pipeline.pubsub import SUBSCRIPTIONS
+    from cloud.pipeline.transforms import FleetPipeline
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--database_url", required=True)
+    parser.add_argument("--vehicles", required=True, help="comma-separated vehicle ids from config/fleet.json")
+    parser.add_argument("--fire_every_s", type=int, default=30)
+    args, beam_args = parser.parse_known_args(argv)
+    options = PipelineOptions(beam_args)
+    options.view_as(StandardOptions).streaming = True
+    project = options.get_all_options()["project"]
+
+    with beam.Pipeline(options=options) as p:
+        streams = []
+        for kind in ("telemetry", "hazard"):
+            subscription = f"projects/{project}/subscriptions/{SUBSCRIPTIONS[kind]}"
+            streams.append(p
+                           | f"Read{kind.title()}" >> ReadFromPubSub(subscription=subscription, with_attributes=True)
+                           | f"As{kind.title()}" >> beam.Map(lambda m, k=kind: pubsub_element(k, m)))
+        _ = (tuple(streams)
+             | "Merge" >> beam.Flatten()
+             | "Fleet" >> FleetPipeline(args.database_url, args.vehicles.split(","), streaming=True,
+                                        fire_every_s=args.fire_every_s))
+
+
 def start_laptop_pipeline(store: Any, database_url: str, known_vehicles: Iterable[str], session: Any,
                           interval_s: float = 30.0) -> LaptopPipeline | None:
     """Start the bridge and the batch loop; None (and nothing started) when Beam is not installed."""
@@ -108,3 +152,7 @@ def start_laptop_pipeline(store: Any, database_url: str, known_vehicles: Iterabl
     pipeline = LaptopPipeline(database_url, known_vehicles, bridge, interval_s=interval_s)
     pipeline.start()
     return pipeline
+
+
+if __name__ == "__main__":
+    run_streaming()

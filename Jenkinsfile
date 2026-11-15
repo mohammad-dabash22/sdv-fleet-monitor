@@ -31,6 +31,13 @@ pipeline {
         pollSCM('H/2 * * * *')
     }
 
+    // The streaming Dataflow job costs credits while it runs, so it is never started by a merge (spec D-7):
+    // run "Build with Parameters" and pick start before a demo, drain right after (D-16).
+    parameters {
+        choice(name: 'DATAFLOW', choices: ['none', 'start', 'drain'],
+               description: 'none: normal build. start/drain: the streaming Dataflow job (tools/dataflow_job.py)')
+    }
+
     agent {
         // python runs the tests, gcloud does everything that talks to GCP.
         kubernetes {
@@ -182,6 +189,32 @@ spec:
                             echo "$svc: http://$IP"
                         done
                         echo "(sdv-dashboard = mock fleet, sdv-cloud = real vans over Zenoh)"
+                    '''
+                }
+            }
+        }
+
+        // Only when DATAFLOW is start or drain (spec REQ-037 AC2): the same script as on a laptop.
+        // The database URL comes from the existing secret, pointed at the internal load balancer, so the
+        // password is never a build parameter.
+        stage('dataflow') {
+            when { expression { params.DATAFLOW != 'none' } }
+            steps {
+                container('gcloud') {
+                    sh 'gcloud auth activate-service-account --key-file "$GCP_KEY"'
+                    sh 'gcloud config set project "$PROJECT"'
+                    sh 'gcloud container clusters get-credentials "$CLUSTER" --region="$CLUSTER_REGION"'
+                    sh '''
+                        python3 -m venv /tmp/dataflow && /tmp/dataflow/bin/pip install --quiet -r requirements.txt
+                        export GOOGLE_APPLICATION_CREDENTIALS="$GCP_KEY"
+                        if [ "$DATAFLOW" = start ]; then
+                            IP=$(kubectl get service sdv-fleet-db-internal -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+                            DB_URL=$(kubectl get secret sdv-fleet-db -o jsonpath='{.data.DATABASE_URL}' | base64 -d \
+                                     | sed "s|@sdv-fleet-db:|@$IP:|")
+                            /tmp/dataflow/bin/python -m tools.dataflow_job start --project "$PROJECT" --db-url "$DB_URL"
+                        else
+                            /tmp/dataflow/bin/python -m tools.dataflow_job drain --project "$PROJECT"
+                        fi
                     '''
                 }
             }

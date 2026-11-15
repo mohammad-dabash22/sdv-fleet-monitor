@@ -9,3 +9,5 @@ venv/
 # never commit cloud keys
 *-key.json
 credentials*.json
+build/
+*.egg-info/

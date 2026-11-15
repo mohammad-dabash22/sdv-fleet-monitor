@@ -35,7 +35,7 @@ says to mark these Partial rather than drop them. Three MVP REQs stay Partial fo
 | REQ-018 | Alerts panel | FR-15, NFR-3 | **Done** | no automated test | checked by hand in the browser |
 | REQ-019 | Latency panel | NFR-1 | **Done** | no automated test | checked by hand in the browser; `docs/evidence/v1-laptop-route-report.jpg` |
 | REQ-020 | Route performance panel | FR-16 | **Replaced** | no automated test | by REQ-034 (new columns, flagged records, pipeline status) |
-| REQ-021 | CI on GitHub Actions | FR-19, NFR-6 | **Done** | no automated test | GitHub Actions runs on PRs #1-#10 |
+| REQ-021 | CI on GitHub Actions | FR-19, NFR-6 | **Done** | `test_req_021_ci_runs_on_pull_requests_main_and_work_branches` | changed in V1: also runs on pushes to `v1/**` and `v2/**` (T19); GitHub Actions runs on PRs #1-#10 and on `v1/sdd` |
 | REQ-022 | CD with Jenkins on GKE | FR-18, NFR-6 | **Done** | no automated test | MVP stages; the V1 stages are in REQ-037; Jenkins build history, `deployments` table |
 | REQ-023 | Containers and dependencies | NFR-4 | **Partial** | `test_req_023_only_vehicle_code_imports_kuksa_client`, `test_req_023_requirements_are_split` | AC3: both requirement sets install in fresh venvs; the images are not built yet (no Docker here; Cloud Build builds them on the next deploy) |
 | REQ-024 | Integration test | FR-19 | **Partial** | `test_hazard_reaches_cloud_within_two_seconds` | the integration test uses the fakes (DV-7) |

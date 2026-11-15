@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Approved** by the user on 2026-11-14 (open questions in section 12 still to answer) |
+| Status | **Approved** by the user on 2026-11-14; open questions answered the same day (D-15, D-16) |
 | Date | 2026-11-14 |
 | Baseline | MVP at commit `4c21d13` (branch `v1/sdd`): 34 tests pass |
 | Sources | `docs/requirements/srs.md` (SRS v1.0, `FR-x` / `NFR-x`), `docs/requirements/charter.md` (Charter v2), `README.md`, the code |
@@ -424,6 +424,9 @@ The pipeline is one composite Beam transform; only its input and runner change.
   load balancer for `fleet-db`, and roll out the bridge with `sdv-cloud`. The existing stages and their order stay.
 - AC2: `python -m tools.dataflow_job start` and `... drain` start and drain the streaming Dataflow job; they are idempotent
   (start does nothing if a job is running) and work from a laptop or as a manual Jenkins stage.
+- AC2a (D-16): by default the job runs with exactly 1 worker (no autoscaling above 1) on the smallest machine type Dataflow
+  accepts for a streaming job. It is started only for a demo or a measurement and drained right after; `docs/pipeline.md`
+  says so next to the start command.
 - AC3: The Jenkins test stage also runs the pipeline tests (DirectRunner).
 - AC4: The one manual setup step is documented: give the `sdv-cloud` pod permission to publish to Pub/Sub, and give Dataflow access to the database secret.
 - Code: `Jenkinsfile`, `deploy/k8s/cloud.yaml`, `deploy/k8s/fleet-db.yaml`, `tools/dataflow_job.py`
@@ -482,7 +485,7 @@ GCP; the route report on the real dashboard; a new latency run of ≥ 50 hazards
 |---|---|---|---|
 | DV-1 | The HazardDetector and CloudPublisher are Velocitas apps (SRS 2.4, 5.2; charter features table, section 6) | Kuksa Python SDK, no Velocitas | D-14. velocitas-sdk 0.15.7 can only write actuator targets (our hazard signals are sensors), needs an MQTT broker per app, pins gRPC/protobuf versions that conflict with kuksa-client, and its last release was July 2025 (the charter's top risk). The rules are separate (`vehicle/hazard_rules`), so adding Velocitas later only changes the detector's input and output. |
 | DV-2 | Use an older Kuksa that works with Velocitas (SRS 2.4) | Kuksa Databroker 0.6.0, VSS 5.1 | Follows from DV-1: no Velocitas, so no need for the old Kuksa. |
-| DV-3 | Build automation with GitHub Actions (SRS 2.4, 5.2; charter sections 4 and 10) | GitHub Actions runs the tests; **Jenkins on GKE** builds and deploys | The reason is not written down in the repo. See Open question 1. |
+| DV-3 | Build automation with GitHub Actions (SRS 2.4, 5.2; charter sections 4 and 10) | GitHub Actions runs the tests; **Jenkins on GKE** builds and deploys | D-15: to apply what the team learned in the course labs and assignments, which use Jenkins. |
 | DV-4 | No new tools in Phase 2 (SRS 2.4; charter risks) | V1 adds Google Pub/Sub and Apache Beam / Dataflow | Required by the course rubric ("Data platform integration": Pub/Sub, storage, Dataflow / Apache Beam). |
 | DV-5 | FR-10 and FR-12 are Phase 2 | They are built in V1 | The course's V1/V2 stages are not the SRS phases. The pipeline needs real transforms, and these are the charter's two Phase 2 "Must" features (D-4). |
 | DV-6 | Fleet data is stored in PostgreSQL (SRS 2.4) | PostgreSQL on GCP; **SQLite in memory** in the laptop demo and tests | The demo and tests need nothing installed. The same SQL runs on both, and GitHub Actions also runs the store tests on PostgreSQL. |
@@ -496,8 +499,8 @@ GCP; the route report on the real dashboard; a new latency run of ≥ 50 hazards
 
 ## 9. Decisions log
 
-The user answered each question in chat on 2026-11-14. In every case the user accepted the recommended option without adding a
-reason of their own, so the reason column is the reason given with the recommendation.
+The user answered each question in chat on 2026-11-14. For D-1 to D-14 the user accepted the recommended option without adding a
+reason of their own, so the reason column is the reason given with the recommendation. D-15 and D-16 are the user's own answers.
 
 | # | Question | Decision | Reason |
 |---|---|---|---|
@@ -515,6 +518,8 @@ reason of their own, so the reason column is the reason given with the recommend
 | D-12 | P3: outdated comments and dead code? | Yes: rewrite them to match the code; remove `Detector.stop()` and `FleetAnalytics.costs`. | 25 comments in 18 files describe done work as future work and mislead readers and AI agents. |
 | D-13 | P4: hazard rules the simulator never triggers? | (a) Document only. (Rejected: change the simulator.) | FR-4 only needs harsh braking and traction loss; not worth V1 time. |
 | D-14 | P5: Velocitas? | (a) Keep it deferred and record the deviation. (Rejected: try again in V1.) | Same four blockers as in the MVP, and the V1 deadline is 2026-11-16. |
+| D-15 | Open question 1: why Jenkins and not GitHub Actions for deployment? | Jenkins deploys; GitHub Actions keeps running the tests. | The user's reason: to apply what was learned in the course labs and assignments. |
+| D-16 | Open question 2: Dataflow budget? | 1 worker, the smallest machine type, started only for a demo or measurement and drained right after (REQ-037 AC2a). | The user's reason: a safe default for the credits. |
 
 **Looked at, not proposed** (found while reading; left out to keep V1 small): `limit` and `minutes` query parameters have no upper
 bound; Jenkins has no smoke test after deploy (rollout status and readiness probes only); the Jenkins test stage has no
@@ -547,5 +552,7 @@ The vehicle and cloud halves never import each other; `cloud/quality.py` and `cl
 
 ## 12. Open questions
 
-1. **DV-3:** Why does Jenkins deploy instead of GitHub Actions? The repo doesn't say. The reason belongs in this table.
-2. **Dataflow budget:** Is there a credit limit per demo run? This decides the worker machine type and the maximum number of workers for `tools/dataflow_job.py`.
+None. Both were answered by the user on 2026-11-14:
+
+1. ~~Why does Jenkins deploy instead of GitHub Actions?~~ To apply what was learned in the labs and assignments (D-15, DV-3).
+2. ~~Dataflow budget?~~ 1 worker, the smallest machine type, only for demos and measurements, drained right after (D-16, REQ-037 AC2a).

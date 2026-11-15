@@ -132,6 +132,44 @@ class Store:
             (),
         )
 
+    # ------------------------------------------------- pipeline (REQ-032)
+    # Written by the Beam pipeline's sinks only; CloudService reads them for the route report.
+    TRIP_COLUMNS = ("vehicle_id", "route_id", "trip_id", "started_ms", "ended_ms", "samples", "distance_km",
+                    "energy_used_pct", "energy_pct_per_km", "avg_speed_kmh", "stop_time_s", "hazards",
+                    "hazards_per_100km")
+    FLAG_COLUMNS = ("id", "vehicle_id", "route_id", "kind", "problems", "detail", "raw", "record_ms")
+
+    def upsert_trip_stats(self, t: dict, processed_at_ms: int) -> None:
+        """One row per (van, trip id, start time); a re-fired pane overwrites it."""
+        cols = self.TRIP_COLUMNS + ("processed_at_ms",)
+        updates = ", ".join(f"{c} = excluded.{c}" for c in cols[4:])
+        self._write(
+            f"INSERT INTO trip_stats ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})"
+            f" ON CONFLICT (vehicle_id, trip_id, started_ms) DO UPDATE SET route_id = excluded.route_id, {updates}",
+            tuple(t.get(c) for c in self.TRIP_COLUMNS) + (processed_at_ms,),
+        )
+
+    def upsert_quality_flag(self, f: dict, processed_at_ms: int) -> None:
+        """One row per distinct raw message (id = hash of it); the same message again is ignored."""
+        cols = self.FLAG_COLUMNS + ("processed_at_ms",)
+        self._write(
+            f"INSERT INTO quality_flags ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})"
+            " ON CONFLICT (id) DO NOTHING",
+            tuple(f.get(c) for c in self.FLAG_COLUMNS) + (processed_at_ms,),
+        )
+
+    def trip_stats(self, limit: int = 20) -> list[dict]:
+        return self._read("SELECT * FROM trip_stats ORDER BY ended_ms DESC LIMIT ?", (limit,))
+
+    def route_stats(self) -> list[dict]:
+        return self._read("SELECT * FROM route_stats ORDER BY route_id", ())
+
+    def quality_flags(self, limit: int = 50) -> list[dict]:
+        return self._read("SELECT * FROM quality_flags ORDER BY processed_at_ms DESC, id LIMIT ?", (limit,))
+
+    def quality_flag_count(self) -> int:
+        return self._read("SELECT COUNT(*) AS n FROM quality_flags", ())[0]["n"]
+
     # -------------------------------------------------------------- helpers
     def _write(self, sql: str, params: tuple, rowcount: bool = False, returning_id: bool = False) -> int:
         """Run an INSERT/UPDATE. Returns the row count, or the new row's id for an INSERT."""
@@ -165,6 +203,27 @@ class Store:
 
 def _now_ms() -> int:
     return int(time.time() * 1000)
+
+
+# --------------------------------------------- one Store per URL per process (REQ-033)
+# A Beam sink carries only DATABASE_URL (it is pickled) and gets its Store here in setup().
+# On the laptop the DirectRunner runs in the dashboard's process, so register_store() lets the
+# sink write into the dashboard's own in-memory SQLite. On Dataflow nothing is registered, so
+# each worker opens its own connection to PostgreSQL.
+_stores: dict[str, Store] = {}
+_stores_lock = threading.Lock()
+
+
+def register_store(store: Store, url: str) -> None:
+    with _stores_lock:
+        _stores[url] = store
+
+
+def store_for(url: str) -> Store:
+    with _stores_lock:
+        if url not in _stores:
+            _stores[url] = Store(url)
+        return _stores[url]
 
 
 def _bool(v: Any) -> bool | None:

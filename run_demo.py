@@ -28,6 +28,7 @@ import json
 import os
 import random
 import threading
+import time
 import webbrowser
 from pathlib import Path
 
@@ -58,6 +59,8 @@ def main() -> None:
                         help="vans move this many times faster on the map, so trips finish during the demo")
     parser.add_argument("--net-delay", type=float, default=40.0, help="fake network delay in ms")
     parser.add_argument("--inject", type=int, default=0, metavar="N", help="inject N hazards for the latency test")
+    parser.add_argument("--replay-samples", action="store_true",
+                        help="after 15 s, replay the 12 bad records of data/samples/telemetry.jsonl to see the quality checks")
     parser.add_argument("--no-browser", action="store_true", help="do not open the browser")
     parser.add_argument("--databroker", choices=["fake", "kuksa"], default=os.environ.get("DATABROKER", "fake"),
                         help="fake (default) or kuksa: real Databrokers on the ports in config/fleet.json, "
@@ -120,6 +123,19 @@ def main() -> None:
                     c.disconnect()
 
         threading.Thread(target=run_injection, name="inject", daemon=True).start()
+
+    if args.replay_samples:
+        from cloud.pipeline.samples import load_samples
+        from tools.replay_samples import replay, select
+
+        def run_replay() -> None:
+            if stop.wait(15):  # let the fleet start first
+                return
+            bad = select(load_samples(now_ms=int(time.time() * 1000)), include_good=False)  # REQ-036 AC2a
+            sent = replay(fake_zenoh.open(), bad)
+            print(f"[replay] sent the {sent} bad sample records: see the flagged records")
+
+        threading.Thread(target=run_replay, name="replay", daemon=True).start()
 
     url = f"http://{'127.0.0.1' if args.host in ('0.0.0.0', '::') else args.host}:{args.port}"
     print("\n  SDV Fleet Monitor (MOCK DATA)")

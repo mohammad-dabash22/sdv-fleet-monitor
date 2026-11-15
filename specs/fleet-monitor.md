@@ -387,6 +387,8 @@ From valid telemetry and hazard events, Beam computes per completed trip and per
 **REQ-033 Runners** · New in V1 · rubric "Dataflow / Apache Beam" · D-3, D-5
 The pipeline is one composite Beam transform; only its input and runner change.
 - AC1: **Tests and CI**: the transforms run on the DirectRunner with in-memory input (`TestPipeline` + `Create`), with no GCP access.
+  Batch runs use the DirectRunner's in-process engine, `FnApiRunner`, by name: in Beam 2.77 a plain `DirectRunner` first tries the
+  Prism runner, which downloads a Go binary from GitHub releases and starts it as a subprocess (found in spike S2, T06).
 - AC2: **Laptop demo and mock dashboard**: every 30 s, the same transform runs in batch on the DirectRunner over the bridge's
   in-memory buffer and writes the tables. A finished trip shows in the route report within about 30 s. The buffer keeps the
   last hour of messages, so the mock dashboard on GKE (which runs for days) does not slow down; older trips are already stored.
